@@ -20,12 +20,6 @@ from std_msgs.msg import Header
 
 import cv2
 
-import csv
-
-def append_to_csv(filename, value):
-    with open(filename, 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([value])
 
 class SocialMapGenerator(Node):
 
@@ -60,8 +54,7 @@ class SocialMapGenerator(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.people_sub  # prevent unused variable warning
 
-    def people_callback(self, msg: People):
-        start_time = self.get_clock().now().nanoseconds # save time for timing of node
+    def people_callback(self, msg: People):# save time for timing of node
         # get the latest transform between the robot and the map
         # TODO assign correct tf_frames
 
@@ -124,8 +117,6 @@ class SocialMapGenerator(Node):
         social_mapHeader.stamp = msg.header.stamp
         self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
             self.socialMap, encoding="passthrough", header=social_mapHeader))
-        timing = start_time - self.get_clock().now().nanoseconds # save time for timing of node
-        append_to_csv("socialMapGeneratorTiming.csv", timing)
 
 
 def main(args=sys.argv):

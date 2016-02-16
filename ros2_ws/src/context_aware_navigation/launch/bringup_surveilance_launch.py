@@ -164,7 +164,7 @@ def generate_launch_description():
         Node(
             package="tf2_ros",
             executable="static_transform_publisher",
-            arguments=["25.0", "8.0", "1.05", "0",
+            arguments=["15.0", "8.0", "1.05", "0",
                        "0", "0", "map", "camera_link"]
         ),
         # Node(
