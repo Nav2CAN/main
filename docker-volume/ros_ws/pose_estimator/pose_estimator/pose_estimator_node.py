@@ -30,7 +30,7 @@ from jetson_utils import videoSource, videoOutput, logUsage
 
 
 
-from person_keypoints import *
+from .person_keypoints import *
 
 
 # @dataclass

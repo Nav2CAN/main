@@ -6,7 +6,9 @@ class keypoint():
     ID: str
     xImage:float
     yImage=float
-    x,y,z=float
+    x =float
+    y=float
+    z=float
 
     def __init__(self, ID: int, xImage: float, yImage: float):
 
