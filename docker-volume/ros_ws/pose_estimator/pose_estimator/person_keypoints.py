@@ -51,6 +51,8 @@ class person_keypoint:
         right_shoulder = next((point for point in self.keypoints if point.ID == 6), None)
         left_hip =       next((point for point in self.keypoints if point.ID == 11), None)
         right_hip =      next((point for point in self.keypoints if point.ID == 12), None)
+
+        #TODO continue this on monday
         print(left_shoulder)
         print(right_shoulder)
         print(left_hip)
