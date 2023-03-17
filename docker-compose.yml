@@ -24,10 +24,13 @@ services:
               capabilities: [gpu]
   realsense_ros2:
     extends:
-      file: realsense-ros2-docker/docker/docker-compose-gui.yml
+      file: realsense-ros2-docker/docker/docker-compose.yml
       service: realsense_ros2
     environment:
-     - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=all
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    command: bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_color:=true"
+    
     runtime: nvidia
   # jetson-inference:
   #   build:
