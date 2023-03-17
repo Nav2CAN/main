@@ -10,11 +10,7 @@ class keypoint():
     x,y,z=float
 
     def __init__(self, ID: str, xImage: float, yImage: float):
-        self.IDnames = np.array(["nose", "left_eye", "right_eye", "left_ear",
-                                    "right_ear", "left_shoulder", "right_shoulder",
-                                    "left_elbow", "right_elbow", "left_wrist",
-                                    "right_wrist", "left_hip", "right_hip", "left_knee",
-                                    "right_knee", "left_ankle", "right_ankle", "neck"])
+
         
         # np.where(self.IDnames=="neck")[0][0]
         self.ID=ID
@@ -33,6 +29,11 @@ class keypoint():
 
 class person_keypoints:
     def __init__(self):
+        self.IDnames = np.array(["nose", "left_eye", "right_eye", "left_ear",
+                            "right_ear", "left_shoulder", "right_shoulder",
+                            "left_elbow", "right_elbow", "left_wrist",
+                            "right_wrist", "left_hip", "right_hip", "left_knee",
+                            "right_knee", "left_ankle", "right_ankle", "neck"])
         self.nose=keypoint(0,0,0)
 
         self.x=None
@@ -47,3 +48,4 @@ class person_keypoints:
     def calculateOrientation(self):
         None
     def calculatePosition(self):
+        None
