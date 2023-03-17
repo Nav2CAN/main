@@ -9,7 +9,7 @@ class keypoint():
     yImage=float
     x,y,z=float
 
-    def __init__(self, ID: str, xImage: float, yImage: float):
+    def __init__(self, ID: int, xImage: float, yImage: float):
 
         
         # np.where(self.IDnames=="neck")[0][0]
@@ -31,11 +31,11 @@ class person_keypoint:
     Keypoints for one detection are passed to this object for calculation of 3D location and orientation
     '''
     def __init__(self, keypoints):
-        self.IDnames = np.array(["nose", "left_eye", "right_eye", "left_ear",
-                            "right_ear", "left_shoulder", "right_shoulder",
-                            "left_elbow", "right_elbow", "left_wrist",
-                            "right_wrist", "left_hip", "right_hip", "left_knee",
-                            "right_knee", "left_ankle", "right_ankle", "neck"])
+        # self.IDnames = np.array(["nose", "left_eye", "right_eye", "left_ear",
+        #                    "right_ear", "left_shoulder", "right_shoulder",
+        #                    "left_elbow", "right_elbow", "left_wrist",
+        #                    "right_wrist", "left_hip", "right_hip", "left_knee",
+        #                    "right_knee", "left_ankle", "right_ankle", "neck"])
         
         self.keypoints = np.array([])
         for kp in keypoints:
