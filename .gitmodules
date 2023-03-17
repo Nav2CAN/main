@@ -1,0 +1,6 @@
+[submodule "jetson-inference"]
+	path = jetson-inference
+	url = git@github.com:Tristan9497/jetson-inference.git
+[submodule "realsense-ros2-docker"]
+	path = realsense-ros2-docker
+	url = git@github.com:Tristan9497/realsense-ros2-docker.git
