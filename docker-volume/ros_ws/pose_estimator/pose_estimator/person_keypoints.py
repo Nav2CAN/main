@@ -39,7 +39,7 @@ class person_keypoint:
         
         self.keypoints = np.array([])
         for kp in keypoints:
-            self.keypoints = np.append(self.keypoints, keypoint(kp.ID, kp.x, kp.y))
+            np.append(self.keypoints, keypoint(kp.ID, kp.x, kp.y))
         
 
 class person_tracking:
