@@ -106,19 +106,21 @@ class PoseEstimator(Node):
 
 
     def saveImage(self,img):
-            print("detected {:d} objects in image".format(len(self.poses)))
+            # print("detected {:d} objects in image".format(len(self.poses)))
             for pose in self.poses:
                 # print(pose)
                 # print(pose.Keypoints)
-                print(pose.Keypoints[0].ID)
-                print(pose.Keypoints[0].x)
-                print(pose.Keypoints[0].y)
+                # print(pose.Keypoints[0].ID)
+                # print(pose.Keypoints[0].x)
+                # print(pose.Keypoints[0].y)
+
+                person_keypoint(pose.Keypoints).calculateOrientation()
 
                 # print('Links', pose.Links)
 
-            self.output.Render(img)
-            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
-            self.net.PrintProfilerTimes()
+            # self.output.Render(img)
+            # self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
+            # self.net.PrintProfilerTimes()
 
 
     # def determine3DPose(self):

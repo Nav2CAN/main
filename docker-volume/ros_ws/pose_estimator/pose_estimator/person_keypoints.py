@@ -1,8 +1,7 @@
-from dataclasses import dataclass
+
 import numpy as np
 
 
-@dataclass
 class keypoint():
     ID: str
     xImage:float
@@ -22,9 +21,12 @@ class keypoint():
     
     def calculate3DPoint(self,distance):
         #TODO implement this
+        
         self.x=0
         self.y=0
         self.z=0
+
+        return self.x,self.y,self.z
 
 class person_keypoint:
     '''
@@ -37,10 +39,20 @@ class person_keypoint:
         #                    "right_wrist", "left_hip", "right_hip", "left_knee",
         #                    "right_knee", "left_ankle", "right_ankle", "neck"])
         
-        self.keypoints = np.array([])
+        self.keypoints = []
         for kp in keypoints:
-            np.append(self.keypoints, keypoint(kp.ID, kp.x, kp.y))
-        
+            self.keypoints.append(keypoint(kp.ID, kp.x, kp.y))
+    
+    def calculateOrientation(self):
+        '''Brief: do the check which keypoints are present, then calculate orientation'''
+        left_shoulder =  next((point for point in self.keypoints if point.ID == 5), None)
+        right_shoulder = next((point for point in self.keypoints if point.ID == 6), None)
+        left_hip =       next((point for point in self.keypoints if point.ID == 11), None)
+        right_hip =      next((point for point in self.keypoints if point.ID == 12), None)
+        print(left_shoulder)
+        print(right_shoulder)
+        print(left_hip)
+        print(right_hip)
 
 class person_tracking:
     def __init__(self, x, y, theta):
