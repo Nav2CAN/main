@@ -1,0 +1,42 @@
+version: "3.9"
+services:
+  rostorch:
+    image: 202f3ba96a3d
+    privileged: true
+    tty: true
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+    # command: bash /docker-volume/install-script.sh
+    volumes:
+      - /dev:/dev
+      - /mnt/SDcard/master-thesis/docker-volume/:/docker-volume
+      - /mnt/SDcard/master-thesis/jetson-inference/data:/jetson-inference/data # for models and images
+      - /mnt/SDcard/master-thesis/jetson-inference/images:/jetson-inference/images # to save images
+    device_cgroup_rules:
+      - 'c 81:* rmw'
+      - 'c 189:* rmw'
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+  realsense_ros2:
+    extends:
+      file: realsense-ros2-docker/docker/docker-compose-gui.yml
+      service: realsense_ros2
+    environment:
+     - NVIDIA_VISIBLE_DEVICES=all
+    runtime: nvidia
+  # jetson-inference:
+  #   build:
+  #     context: jetson-inference
+  #     dockerfile: Dockerfile
+  #     #target: librealsense
+  #   tty: true
+  #   environment:
+  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+  #   volumes:
+  #     - /dev:/dev
+
