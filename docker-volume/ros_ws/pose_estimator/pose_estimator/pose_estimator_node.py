@@ -28,7 +28,10 @@ import jetson.utils
 from jetson_inference import poseNet
 from jetson_utils import videoSource, videoOutput, logUsage
 
-from dataclasses import dataclass
+
+
+from person_keypoints import *
+
 
 # @dataclass
 # class Pose:

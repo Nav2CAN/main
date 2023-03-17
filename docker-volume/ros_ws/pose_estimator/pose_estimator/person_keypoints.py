@@ -1,5 +1,13 @@
+from dataclasses import dataclass
+
+@dataclass
 class keypoint():
-    def __init__(self,ID,xImage,yImage):
+    ID: str
+    xImage:float
+    yImage=float
+    x,y,z=float
+
+    def __init__(self, ID: str, xImage: float, yImage: float):
         self.ID=ID
         self.xImage=xImage
         self.yImage=yImage
@@ -17,7 +25,7 @@ class keypoint():
 class person_keypoints:
     def __init__(self):
         self.nose=keypoint(0,0,0)
-        
+
         self.x=None
         self.y=None
         self.theta=None
