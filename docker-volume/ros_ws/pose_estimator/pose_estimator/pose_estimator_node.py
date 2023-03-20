@@ -1,9 +1,12 @@
 import rclpy
+import threading
 import numpy as np
 import cv2
 from rclpy.node import Node
 
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import Point
+from visualization_msgs.msg import Marker
 
 from cv_bridge import CvBridge
 
@@ -38,7 +41,7 @@ class PoseEstimator(Node):
         self.cudaimage=None
         self.depth=None
         self.poses=None
-
+        self.publisher_ = self.create_publisher(Marker, 'keypoints', 10)
         self.rgb_subscription = self.create_subscription(
             Image,
             '/camera/color/image_raw',
@@ -56,7 +59,7 @@ class PoseEstimator(Node):
         # Setup variables for PoseNet
         self.network = "resnet18-body"
         self.overlay = "links,keypoints,boxes"
-        self.threshold = 0.15
+        self.threshold = 0.3
         self.output_location = "images" # only needed for saving images
 
         # Initialising PoseNet and its output
@@ -82,9 +85,9 @@ class PoseEstimator(Node):
     def saveImage(self,img):
             self.imageCount += 1
             print("detected {:d} objects in image".format(len(self.poses)))
-            # for pose in self.poses:
-                # print(pose)
-                # print(pose.Keypoints)
+            for pose in self.poses:
+                print(pose)
+                print(pose.Keypoints)
 
                 # print('Links', pose.Links)
 
@@ -92,6 +95,35 @@ class PoseEstimator(Node):
             self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
             self.net.PrintProfilerTimes()
 
+
+    def publishKeypointsMarker(self,kpPerson:person_keypoint):
+        for pose in self.poses:
+            marker=Marker()
+            marker.header.frame_id = "/camera_link"
+            marker.header.stamp = self.get_clock().now().to_msg()
+
+            # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
+            marker.type = 8
+            marker.id = 0
+
+            # Set the scale of the marker
+            marker.scale.x = .05
+            marker.scale.y = .05
+            marker.scale.z = .05
+
+            # Set the color
+            marker.color.r = 0.0
+            marker.color.g = 1.0
+            marker.color.b = 0.0
+            marker.color.a = 1.0
+
+            for kp in kpPerson.keypoints:
+                point=Point()
+                point.x=kp.x
+                point.y=kp.y
+                point.z=kp.z
+                marker.points.append(point)
+            self.publisher_.publish(marker)
     def getPersons(self):
         '''
         Calculates the location of the person as X and Y coordinates along with the orientation of the person
@@ -99,6 +131,7 @@ class PoseEstimator(Node):
         persons = []
         for pose in self.poses:
             kpPerson=person_keypoint(pose.Keypoints, self.depth)
+            self.publishKeypointsMarker(kpPerson=kpPerson)
             persons.append(kpPerson)
             
         return persons
@@ -134,17 +167,23 @@ class PoseEstimator(Node):
 
 def main(args=None):
     
-    rclpy.init(args=args) # Start ROS2 node
+    rclpy.init(args=args)
+    pose_estimator = PoseEstimator()  # Start ROS2 node
+    thread = threading.Thread(target=rclpy.spin, args=(pose_estimator, ), daemon=True)
+    thread.start()
 
-    pose_estimator = PoseEstimator() # initiate pose estimator object
+    rate = pose_estimator.create_rate(10)
+    # initiate pose estimator object
 
     try:
         while rclpy.ok():
+            rate.sleep()
             if(pose_estimator.cudaimage != None): # Make sure an image has been captured
                 pose_estimator.detectPoses()
-            if pose_estimator.peopleCount == 10: # DC for data collection run only until a certain amount of people have been detected
+                
+            if pose_estimator.peopleCount == 1000: # DC for data collection run only until a certain amount of people have been detected
                 break
-            rclpy.spin_once(pose_estimator)
+            # rclpy.spin_once(pose_estimator)
     except KeyboardInterrupt:
         pass
 
