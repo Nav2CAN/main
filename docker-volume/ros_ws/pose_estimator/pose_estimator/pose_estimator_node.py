@@ -12,7 +12,7 @@ import jetson.utils
 from jetson_inference import poseNet
 from jetson_utils import videoOutput, logUsage
 
-import csv
+import csv # DC remove later
 
 from .person_keypoints import *
 
