@@ -133,7 +133,7 @@ class PoseEstimator(Node):
         return persons
     
     def writing(self, personlist):
-        with open('SanityCheck.csv', mode = 'w') as csvfile:
+        with open('SanityCheck.csv', mode = 'a') as csvfile:
             writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)            
             
             if not self.written:
