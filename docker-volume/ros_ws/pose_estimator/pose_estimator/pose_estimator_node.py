@@ -83,7 +83,7 @@ class PoseEstimator(Node):
         self.network = "resnet18-body"
         self.overlay = "links,keypoints"
         self.threshold = 0.15
-        self.output_location = "images"
+        self.output_location = "images" # only needed for saving images
 
         self.net = poseNet(self.network, ['pose_estimator_node.py'], self.threshold)
         # self.input = videoSource(self.rgb, argv=['pose_estimator_node.py'])
@@ -122,7 +122,6 @@ class PoseEstimator(Node):
             # self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
             # self.net.PrintProfilerTimes()
 
-
     # def determine3DPose(self):
 
 
@@ -134,8 +133,6 @@ class PoseEstimator(Node):
         # print the pose results
         self.saveImage(self.cudaimage)
 
-            
-  
 
 def main(args=None):
     
