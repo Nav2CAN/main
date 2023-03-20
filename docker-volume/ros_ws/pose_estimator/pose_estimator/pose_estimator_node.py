@@ -81,7 +81,7 @@ class PoseEstimator(Node):
         self.depth_subscription  # prevent unused variable warning
 
         self.network = "resnet18-body"
-        self.overlay = "links,keypoints"
+        self.overlay = "links,keypoints,boxes"
         self.threshold = 0.15
         self.output_location = "images"
 
@@ -106,34 +106,38 @@ class PoseEstimator(Node):
 
 
     def saveImage(self,img):
-            # print("detected {:d} objects in image".format(len(self.poses)))
+            print("detected {:d} objects in image".format(len(self.poses)))
             for pose in self.poses:
-                # print(pose)
-                # print(pose.Keypoints)
-                # print(pose.Keypoints[0].ID)
-                # print(pose.Keypoints[0].x)
-                # print(pose.Keypoints[0].y)
+                print(pose)
+                print(pose.Keypoints)
+                print('Links', pose.Links)
 
-                person_keypoint(pose.Keypoints).calculateOrientation()
-
-                # print('Links', pose.Links)
-
-            # self.output.Render(img)
-            # self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
-            # self.net.PrintProfilerTimes()
+            self.output.Render(img)
+            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
+            self.net.PrintProfilerTimes()
 
 
     # def determine3DPose(self):
+    def getPersons(self):
+        persons = []
+        for pose in self.poses:
+            kpPerson=person_keypoint(pose.Keypoints)
+            kpPerson.getPersonOrientation()
+            kpPerson.getPersonPosition()
 
+            persons.append(kpPerson)
+            
+        return persons
+    
 
-    def detectPose(self):
+    def detectPoses(self):
         # perform pose estimation (with overlay)
         self.poses = self.net.Process(self.cudaimage, overlay=self.overlay)
 
         #TODO comment out when running node
         # print the pose results
-        self.saveImage(self.cudaimage)
-
+        # self.saveImage(self.cudaimage)
+        persons=self.getPersons()
             
   
 
@@ -146,7 +150,7 @@ def main(args=None):
     try:
         while rclpy.ok():
             if(pose_estimator.cudaimage != None):
-                pose_estimator.detectPose()
+                pose_estimator.detectPoses()
             rclpy.spin_once(pose_estimator)
     except KeyboardInterrupt:
         pass
