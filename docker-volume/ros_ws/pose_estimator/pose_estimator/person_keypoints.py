@@ -89,6 +89,9 @@ class person_keypoint:
         self.right_hip = next((point for point in self.keypoints if point.ID == 12), None)
         self.left_ear = next((point for point in self.keypoints if point.ID == 3), None)
         self.right_ear = next((point for point in self.keypoints if point.ID == 4), None)
+
+        self.getPersonOrientation()
+        self.getPersonPosition()
         
     
     def getPersonOrientation(self):
