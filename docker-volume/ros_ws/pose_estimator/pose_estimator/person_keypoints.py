@@ -127,9 +127,9 @@ class person_keypoint:
             kp.calculate3DKeypoint(depth=self.depth,depthRadiusX=1, depthRadiusY=1)
             kpx.append(kp.x)
             kpy.append(kp.y)
-        self.x=sum(kpx)/len(kpx)
-        self.y=sum(kpy)/len(kpy)
 
+        self.x=np.nanmean(np.array(kpx))
+        self.y=np.nanmean(np.array(kpy))
 
 
 
