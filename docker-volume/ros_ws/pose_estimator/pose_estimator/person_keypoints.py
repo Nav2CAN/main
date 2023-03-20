@@ -69,7 +69,7 @@ class keypoint():
         self.depthRadius=depthRadius
     
     def calculate3DKeyoint(self, depth):
-        self.x,self.y=calculate3DPoint(depth = depth, xImage = self.xImage, yImage = self.yImage, depthRadiusX = 2, depthRadiusY = 2)
+        self.x,self.y=calculate3DPoint(depth = depth, xImage = self.xImage, yImage = self.yImage, depthRadiusX = self.depthRadius, depthRadiusY = self.depthRadius)
         
     
 class person_keypoint:
