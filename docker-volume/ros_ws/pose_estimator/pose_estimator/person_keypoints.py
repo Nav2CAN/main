@@ -13,6 +13,7 @@ class keypoint():
         self.yImage: float = yImage
         self.x: float = None
         self.y: float = None
+        self.z: float = None
 
     def calculate3DKeypoint(self, depth, depthRadiusX: int = 2, depthRadiusY: int = 2, resolutionX = 640, resolutionY = 480, HFOV = np.radians(54.732), VFOV = np.radians(42.4115)):
 
@@ -63,6 +64,7 @@ class keypoint():
         #return x andy according to REP
         self.y = np.sin(gamma) * distance
         self.x = np.cos(gamma) * distance
+        self.z = np.sin(delta) * distance
     
 class person_keypoint:
     '''
@@ -109,7 +111,13 @@ class person_keypoint:
     def getOrientationFromPoints(self,left: keypoint,right: keypoint):
             left.calculate3DKeypoint(self.depth)
             right.calculate3DKeypoint(self.depth)
-            self.orientation=np.arctan2(left.y-right.y,left.x-right.x)-np.pi/2
+            self.orientation=np.arctan2(right.y-left.y,right.x-left.x)+np.pi/2
+
+            #fix wrapping of angles
+            if self.orientation<-np.pi:
+                self.orientation+=2*np.pi
+            elif self.orientation>np.pi:
+                self.orientation-=2*np.pi
 
     def getPersonPosition(self):
         kpx = []
