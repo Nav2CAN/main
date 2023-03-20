@@ -83,7 +83,7 @@ class PoseEstimator(Node):
         self.network = "resnet18-body"
         self.overlay = "links,keypoints,boxes"
         self.threshold = 0.15
-        self.output_location = "images"
+        self.output_location = "images" # only needed for saving images
 
         self.net = poseNet(self.network, ['pose_estimator_node.py'], self.threshold)
         # self.input = videoSource(self.rgb, argv=['pose_estimator_node.py'])
@@ -112,9 +112,13 @@ class PoseEstimator(Node):
                 print(pose.Keypoints)
                 print('Links', pose.Links)
 
-            self.output.Render(img)
-            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
-            self.net.PrintProfilerTimes()
+                person_keypoint(pose.Keypoints).calculateOrientation()
+
+                # print('Links', pose.Links)
+
+            # self.output.Render(img)
+            # self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
+            # self.net.PrintProfilerTimes()
 
 
     # def determine3DPose(self):
