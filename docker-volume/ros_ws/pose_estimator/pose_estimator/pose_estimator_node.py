@@ -28,7 +28,7 @@ import jetson.utils
 from jetson_inference import poseNet
 from jetson_utils import videoSource, videoOutput, logUsage
 
-
+import csv
 
 from .person_keypoints import *
 
@@ -61,6 +61,8 @@ class PoseEstimator(Node):
         # parser.add_argument("--threshold", type=float, default=0.15, help="minimum detection threshold to use") 
 
         self.peopleCount = 0
+        self.imageCount = -1
+        self.written = False
 
         self.bridge=CvBridge()
         self.rgb=None
@@ -108,6 +110,7 @@ class PoseEstimator(Node):
 
 
     def saveImage(self,img):
+            self.imageCount += 1
             print("detected {:d} objects in image".format(len(self.poses)))
             for pose in self.poses:
                 print(pose)
@@ -128,13 +131,20 @@ class PoseEstimator(Node):
         persons = []
         for pose in self.poses:
             kpPerson=person_keypoint(pose.Keypoints)
-            kpPerson.getPersonOrientation()
-            kpPerson.getPersonPosition()
-
             persons.append(kpPerson)
             
         return persons
     
+    def writing(self, personlist):
+        with open('SanityCheck.csv', mode = 'w') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)            
+            
+            if not self.written:
+                writer.writerow(['ImageID', 'PersonX', 'PersonY', 'Orientation'])
+                self.written = True
+            for person in personlist:
+                writer.writerow([str(self.imageCount), str(person.x), str(person.y), str(person.orientation)])
+
 
     def detectPoses(self):
         # perform pose estimation (with overlay)
@@ -145,7 +155,8 @@ class PoseEstimator(Node):
         self.saveImage(self.cudaimage)
         persons=self.getPersons()
 
-        self.peopleCount += len(persons)  
+        self.peopleCount += len(persons) 
+        self.writing(persons) 
           
 
 def main(args=None):
