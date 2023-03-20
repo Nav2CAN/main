@@ -118,7 +118,9 @@ class PoseEstimator(Node):
 
 
     def detectPoses(self):
-        # perform pose estimation (with overlay)
+        '''
+        Perform pose estimation (with overlay)
+        '''
         self.poses = self.net.Process(self.cudaimage, overlay=self.overlay)
 
         #TODO comment out when running node
@@ -132,13 +134,13 @@ class PoseEstimator(Node):
 
 def main(args=None):
     
-    rclpy.init(args=args)
+    rclpy.init(args=args) # Start ROS2 node
 
-    pose_estimator = PoseEstimator()
+    pose_estimator = PoseEstimator() # initiate pose estimator object
 
     try:
         while rclpy.ok():
-            if(pose_estimator.cudaimage != None):
+            if(pose_estimator.cudaimage != None): # Make sure an image has been captured
                 pose_estimator.detectPoses()
             if pose_estimator.peopleCount == 10: # DC for data collection run only until a certain amount of people have been detected
                 break
