@@ -60,6 +60,8 @@ class PoseEstimator(Node):
         # parser.add_argument("--overlay", type=str, default="links,keypoints", help="pose overlay flags (e.g. --overlay=links,keypoints)\nvalid combinations are:  'links', 'keypoints', 'boxes', 'none'")
         # parser.add_argument("--threshold", type=float, default=0.15, help="minimum detection threshold to use") 
 
+        self.peopleCount = 0
+
         self.bridge=CvBridge()
         self.rgb=None
         self.cudaimage=None
@@ -140,10 +142,11 @@ class PoseEstimator(Node):
 
         #TODO comment out when running node
         # print the pose results
-        # self.saveImage(self.cudaimage)
+        self.saveImage(self.cudaimage)
         persons=self.getPersons()
-            
-  
+
+        self.peopleCount += len(persons)  
+          
 
 def main(args=None):
     
@@ -155,6 +158,8 @@ def main(args=None):
         while rclpy.ok():
             if(pose_estimator.cudaimage != None):
                 pose_estimator.detectPoses()
+            if pose_estimator.peopleCount == 10:
+                break
             rclpy.spin_once(pose_estimator)
     except KeyboardInterrupt:
         pass
