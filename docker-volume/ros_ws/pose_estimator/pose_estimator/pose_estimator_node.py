@@ -178,10 +178,10 @@ def main(args=None):
     try:
         while rclpy.ok():
             rate.sleep()
-            if(pose_estimator.cudaimage != None): # Make sure an image has been captured
+            if(pose_estimator.cudaimage != None) and isinstance(pose_estimator.depth, np.ndarray): # Make sure an image has been captured
                 pose_estimator.detectPoses()
                 
-            if pose_estimator.peopleCount == 1000: # DC for data collection run only until a certain amount of people have been detected
+            if pose_estimator.peopleCount == 10: # DC for data collection run only until a certain amount of people have been detected
                 break
             # rclpy.spin_once(pose_estimator)
     except KeyboardInterrupt:
