@@ -20,7 +20,6 @@ import csv # DC remove later
 from .person_keypoints import *
 from tf_transformations import quaternion_from_euler
 
-
 class PoseEstimator(Node):
     '''
     Class for pose estimation of a person using Nvidia jetson implementation
@@ -106,9 +105,9 @@ class PoseEstimator(Node):
         marker.id = 0
 
         # Set the scale of the marker
-        marker.scale.x = .05
-        marker.scale.y = .05
-        marker.scale.z = .05
+        marker.scale.x = 1.0
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
 
         # Set the color
         marker.color.r = 0.0
@@ -116,16 +115,18 @@ class PoseEstimator(Node):
         marker.color.b = 0.0
         marker.color.a = 1.0
         # Set the pose of the marker
-        quad=quaternion_from_euler(0,0,kpPerson.orientation)
+        if(kpPerson.x and kpPerson.y and kpPerson.orientation):
+            quad=quaternion_from_euler(0,0,(2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
 
-        marker.pose.position.x = kpPerson.x
-        marker.pose.position.y = kpPerson.y
-        marker.pose.position.z = 0
-        marker.pose.orientation.x = quad[0]
-        marker.pose.orientation.y = quad[1]
-        marker.pose.orientation.z = quad[2]
-        marker.pose.orientation.w = quad[3]
-        self.publisher_.publish(marker)
+            marker.pose.position.x = kpPerson.x
+            marker.pose.position.y = kpPerson.y
+            marker.pose.position.z = float(0)
+            marker.pose.orientation.x = float(quad[0])
+            marker.pose.orientation.y = float(quad[1])
+            marker.pose.orientation.z = float(quad[2])
+            marker.pose.orientation.w = float(quad[3])
+            self.publisher_.publish(marker)
+
     def publishKeypointsMarker(self, kpPerson:person_keypoint):
         marker=Marker()
         marker.header.frame_id = "/camera_link"
@@ -187,11 +188,12 @@ class PoseEstimator(Node):
 
         #TODO comment out when running node
         # print the pose results
-        self.saveImage(self.cudaimage)
+        
         persons=self.getPersons()
-
-        self.peopleCount += len(persons) 
-        self.writing(persons) 
+        if len(persons)!=0:
+            self.saveImage(self.cudaimage)
+            self.peopleCount += len(persons) 
+            self.writing(persons) 
           
 
 def main(args=None):
@@ -210,7 +212,7 @@ def main(args=None):
             if(pose_estimator.cudaimage != None) and isinstance(pose_estimator.depth, np.ndarray): # Make sure an image has been captured
                 pose_estimator.detectPoses()
                 
-            if pose_estimator.peopleCount == 10: # DC for data collection run only until a certain amount of people have been detected
+            if pose_estimator.peopleCount == 1000: # DC for data collection run only until a certain amount of people have been detected
                 break
             # rclpy.spin_once(pose_estimator)
     except KeyboardInterrupt:
