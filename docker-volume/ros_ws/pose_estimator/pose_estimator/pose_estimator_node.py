@@ -18,6 +18,7 @@ from jetson_utils import videoOutput, logUsage
 import csv # DC remove later
 
 from .person_keypoints import *
+from tf_transformations import quaternion_from_euler
 
 
 class PoseEstimator(Node):
@@ -95,35 +96,63 @@ class PoseEstimator(Node):
             self.output.SetStatus("{:s} | Network {:.0f} FPS".format(self.network, self.net.GetNetworkFPS()))
             self.net.PrintProfilerTimes()
 
+    def publishPoseArrow(self, kpPerson:person_keypoint):
+        marker=Marker()
+        marker.header.frame_id = "/camera_link"
+        marker.header.stamp = self.get_clock().now().to_msg()
 
-    def publishKeypointsMarker(self,kpPerson:person_keypoint):
-        for pose in self.poses:
-            marker=Marker()
-            marker.header.frame_id = "/camera_link"
-            marker.header.stamp = self.get_clock().now().to_msg()
+        # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
+        marker.type = 0
+        marker.id = 0
 
-            # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
-            marker.type = 8
-            marker.id = 0
+        # Set the scale of the marker
+        marker.scale.x = .05
+        marker.scale.y = .05
+        marker.scale.z = .05
 
-            # Set the scale of the marker
-            marker.scale.x = .05
-            marker.scale.y = .05
-            marker.scale.z = .05
+        # Set the color
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+        # Set the pose of the marker
+        quad=quaternion_from_euler(0,0,kpPerson.orientation)
 
-            # Set the color
-            marker.color.r = 0.0
-            marker.color.g = 1.0
-            marker.color.b = 0.0
-            marker.color.a = 1.0
+        marker.pose.position.x = kpPerson.x
+        marker.pose.position.y = kpPerson.y
+        marker.pose.position.z = 0
+        marker.pose.orientation.x = quad[0]
+        marker.pose.orientation.y = quad[1]
+        marker.pose.orientation.z = quad[2]
+        marker.pose.orientation.w = quad[3]
+        self.publisher_.publish(marker)
+    def publishKeypointsMarker(self, kpPerson:person_keypoint):
+        marker=Marker()
+        marker.header.frame_id = "/camera_link"
+        marker.header.stamp = self.get_clock().now().to_msg()
 
-            for kp in kpPerson.keypoints:
-                point=Point()
-                point.x=kp.x
-                point.y=kp.y
-                point.z=kp.z
-                marker.points.append(point)
-            self.publisher_.publish(marker)
+        # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
+        marker.type = 8
+        marker.id = 0
+
+        # Set the scale of the marker
+        marker.scale.x = .05
+        marker.scale.y = .05
+        marker.scale.z = .05
+
+        # Set the color
+        marker.color.r = 0.0
+        marker.color.g = 1.0
+        marker.color.b = 0.0
+        marker.color.a = 1.0
+
+        for kp in kpPerson.keypoints:
+            point=Point()
+            point.x=kp.x
+            point.y=kp.y
+            point.z=kp.z
+            marker.points.append(point)
+        self.publisher_.publish(marker)
     def getPersons(self):
         '''
         Calculates the location of the person as X and Y coordinates along with the orientation of the person
@@ -131,7 +160,7 @@ class PoseEstimator(Node):
         persons = []
         for pose in self.poses:
             kpPerson=person_keypoint(pose.Keypoints, self.depth)
-            self.publishKeypointsMarker(kpPerson=kpPerson)
+            self.publishPoseArrow(kpPerson=kpPerson)
             persons.append(kpPerson)
             
         return persons
