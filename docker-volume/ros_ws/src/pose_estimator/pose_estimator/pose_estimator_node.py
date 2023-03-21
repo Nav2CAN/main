@@ -181,7 +181,8 @@ class PoseEstimator(Node):
             for person in personlist:
                 left_shoulder = next((point for point in person.keypoints if point.ID == 5), None)
                 right_shoulder = next((point for point in person.keypoints if point.ID == 6), None)
-                writer.writerow([str(self.imageCount), str(person.x), str(person.y), str(person.orientation),
+                if left_shoulder and right_shoulder:
+                    writer.writerow([str(self.imageCount), str(person.x), str(person.y), str(person.orientation),
                                   str(left_shoulder.x), str(left_shoulder.y), str(left_shoulder.z),
                                   str(right_shoulder.x), str(right_shoulder.y), str(right_shoulder.z)])
 
