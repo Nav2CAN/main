@@ -182,9 +182,9 @@ class PoseEstimator(Node):
                 left_shoulder = next((point for point in person.keypoints if point.ID == 5), None)
                 right_shoulder = next((point for point in person.keypoints if point.ID == 6), None)
                 if left_shoulder and right_shoulder:
-                    writer.writerow([str(self.imageCount), str(person.x), str(person.y), str(person.orientation),
-                                  str(left_shoulder.x), str(left_shoulder.y), str(left_shoulder.z),
-                                  str(right_shoulder.x), str(right_shoulder.y), str(right_shoulder.z)])
+                    writer.writerow([str(self.imageCount), str(round(person.x,3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
+                                  str(round(left_shoulder.x, 3)), str(round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
+                                  str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
 
 
     def detectPoses(self):
