@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   rostorch:
-    image: 202f3ba96a3d
+    image: e657577afeae
     privileged: true
     tty: true
     network_mode: host
