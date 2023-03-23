@@ -60,7 +60,7 @@ class PoseEstimator(Node):
         self.network = "resnet18-body"
         self.overlay = "links,keypoints,boxes"
         self.threshold = 0.3
-        self.output_location = "images" # only needed for saving images
+        self.output_location = "/docker-volume/images" # only needed for saving images
 
         # Initialising PoseNet and its output
         self.net = poseNet(self.network, ['pose_estimator_node.py'], self.threshold)
