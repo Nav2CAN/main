@@ -93,3 +93,14 @@ ros2 run pose_estimator pose_estimator
 
 # PoseNet
 As the roject uses PoseNet from the jetson-inference package, it is important that the network is downloaded before use. This can be done using the tool provided by Nvidia *jetson-inference/tools/download-models.sh* and downloading **Pose-ResNet18-Body**
+
+
+#Issues
+incase of docker error like:
+```
+  ERROR [internal] load metadata for nvcr.io/nvidia/l4t-jetpack:r35.2.1 
+```
+The docker image needs to be pulled manually using e.g.:
+```
+  docker pull nvcr.io/nvidia/l4t-jetpack:r35.2.1 
+```
