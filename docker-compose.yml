@@ -26,10 +26,13 @@ services:
     extends:
       file: realsense-ros2-docker/docker/docker-compose.yml
       service: realsense_ros2
+    volumes: # attach our realsense launch files into realsense workspace
+      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_launch.py
+      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=5
-    command: bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_color:=true"
+    command: bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch realsense2_camera rs_ours_multi_camera_launch.py"
     
     runtime: nvidia
