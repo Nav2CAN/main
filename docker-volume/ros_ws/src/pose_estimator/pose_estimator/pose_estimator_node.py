@@ -10,8 +10,7 @@ from visualization_msgs.msg import Marker
 
 from cv_bridge import CvBridge
 
-import jetson.inference
-import jetson.utils
+import jetson_utils
 from jetson_inference import poseNet
 from jetson_utils import videoOutput, logUsage
 
@@ -70,7 +69,7 @@ class PoseEstimator(Node):
         try:
             self.rgb = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
             cudaimage = cv2.cvtColor(self.rgb, cv2.COLOR_BGRA2RGBA).astype(np.float32) #converting the image to a cuda compatible image
-            self.cudaimage = jetson.utils.cudaFromNumpy(cudaimage)
+            self.cudaimage = jetson_utils.cudaFromNumpy(cudaimage)
         except:
             pass
 
