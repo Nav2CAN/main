@@ -49,7 +49,7 @@ https://docs.docker.com/engine/install/linux-postinstall/
 ```
 should return /mnt/SDcard/docker/root
 
-#### Pull the repository with all submodules using:
+## Pull the repository with all submodules using:
 ```
 git clone --recursive -j8 git@github.com:Tristan9497/master-thesis.git
 ```
