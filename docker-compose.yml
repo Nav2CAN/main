@@ -6,6 +6,7 @@ services:
     tty: true
     network_mode: host
     environment:
+      - NVIDIA_VISIBLE_DEVICES=all
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=5
     # command: bash /docker-volume/install-script.sh
@@ -17,13 +18,9 @@ services:
     device_cgroup_rules:
       - 'c 81:* rmw'
       - 'c 189:* rmw'
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
+    runtime: nvidia
+
+    
   realsense_ros2:
     network_mode: host
     extends:
