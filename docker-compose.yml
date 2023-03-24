@@ -1,24 +1,23 @@
 version: "3.9"
 services:
   rostorch:
+    tty: true
     image: bf52e2915677
     privileged: true
-    tty: true
     network_mode: host
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=5
-    # command: bash /docker-volume/install-script.sh
     volumes:
       - /dev:/dev
+      - /mnt/SDcard/master-thesis/bash-setup:/root/.bashrc
       - /mnt/SDcard/master-thesis/docker-volume/:/docker-volume
       - /mnt/SDcard/master-thesis/jetson-inference/data:/jetson-inference/data # for models and images
       - /mnt/SDcard/master-thesis/jetson-inference/images:/jetson-inference/images # to save images
-    device_cgroup_rules:
-      - 'c 81:* rmw'
-      - 'c 189:* rmw'
     runtime: nvidia
+    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && pip3 install transforms3d && tail -f /dev/null"
+    
     
   realsense_ros2:
     privileged: true
