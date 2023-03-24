@@ -8,3 +8,6 @@
 [submodule "docker-volume/ros_ws/src/tf_transformations"]
 	path = docker-volume/ros_ws/src/tf_transformations
 	url = git@github.com:DLu/tf_transformations.git
+[submodule "jetson-containers"]
+	path = jetson-containers
+	url = git@github.com:Tristan9497/jetson-containers.git
