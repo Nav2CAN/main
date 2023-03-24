@@ -33,6 +33,6 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
       - ROS_DOMAIN_ID=5
-    command: bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch realsense2_camera rs_ours_multi_camera_launch.py"
+    command: bash -c "source /opt/ros/humble/setup.bash && colcon build --packages-select realsense2_camera && source install/setup.bash && ros2 launch realsense2_camera rs_ours_launch.py"
     
     runtime: nvidia
