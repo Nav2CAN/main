@@ -50,8 +50,8 @@ configurable_parameters = [{'name': 'camera_name',                  'default': '
                            {'name': 'pointcloud.enable',            'default': 'false', 'description': ''}, 
                            {'name': 'pointcloud.stream_filter',     'default': '2', 'description': 'texture stream for pointcloud'},
                            {'name': 'pointcloud.stream_index_filter','default': '0', 'description': 'texture stream index for pointcloud'},
-                           {'name': 'enable_sync',                  'default': 'false', 'description': "''"},                           
-                           {'name': 'align_depth.enable',           'default': 'false', 'description': "''"},                           
+                           {'name': 'enable_sync',                  'default': 'true', 'description': "''"},                           
+                           {'name': 'align_depth.enable',           'default': 'true', 'description': "''"},                           
                            {'name': 'colorizer.enable',             'default': 'false', 'description': "''"},
                            {'name': 'clip_distance',                'default': '-2.', 'description': "''"},                           
                            {'name': 'linear_accel_cov',             'default': '0.01', 'description': "''"},                           
@@ -72,7 +72,12 @@ configurable_parameters = [{'name': 'camera_name',                  'default': '
                            {'name': 'hdr_merge.enable',             'default': 'false', 'description': 'hdr_merge filter enablement flag'},
                            {'name': 'wait_for_device_timeout',      'default': '-1.', 'description': 'Timeout for waiting for device to connect (Seconds)'},
                            {'name': 'reconnect_timeout',            'default': '6.', 'description': 'Timeout(seconds) between consequtive reconnection attempts'},
-                          ]
+                           {'name': 'spatial_filter.enable',        'default': 'true', 'description': "''"},
+                           {'name': 'disparity_filter.enable',      'default': 'true', 'description': "''"},
+                           {'name': 'temporal_filter.enable',       'default': 'true', 'description': "''"},
+                           {'name': 'hole_filling_filter.enable',   'default': 'true', 'description': "''"},
+                           {'name': 'decimation_filter.enable',     'default': 'true', 'description': "''"}
+                                                    ]
 
 def declare_configurable_parameters(parameters):
     return [DeclareLaunchArgument(param['name'], default_value=param['default'], description=param['description']) for param in parameters]
