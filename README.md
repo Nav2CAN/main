@@ -97,9 +97,6 @@ As the roject uses PoseNet from the jetson-inference package, it is important th
 
 # Issues
 in case of docker error like:
-
-*this was happening when rebuilding the containers*
-
 ```
   ERROR [internal] load metadata for nvcr.io/nvidia/l4t-jetpack:r35.2.1 
 ```
@@ -107,3 +104,4 @@ The docker image needs to be pulled manually using e.g.:
 ```
   docker pull nvcr.io/nvidia/l4t-jetpack:r35.2.1 
 ```
+*this was happening when rebuilding the containers*
