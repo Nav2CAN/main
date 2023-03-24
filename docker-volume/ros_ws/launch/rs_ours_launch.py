@@ -72,11 +72,11 @@ configurable_parameters = [{'name': 'camera_name',                  'default': '
                            {'name': 'hdr_merge.enable',             'default': 'false', 'description': 'hdr_merge filter enablement flag'},
                            {'name': 'wait_for_device_timeout',      'default': '-1.', 'description': 'Timeout for waiting for device to connect (Seconds)'},
                            {'name': 'reconnect_timeout',            'default': '6.', 'description': 'Timeout(seconds) between consequtive reconnection attempts'},
-                           {'name': 'spatial_filter.enable',        'default': 'true', 'description': "''"},
-                           {'name': 'disparity_filter.enable',      'default': 'true', 'description': "''"},
-                           {'name': 'temporal_filter.enable',       'default': 'true', 'description': "''"},
-                           {'name': 'hole_filling_filter.enable',   'default': 'true', 'description': "''"},
-                           {'name': 'decimation_filter.enable',     'default': 'true', 'description': "''"}
+                        #    {'name': 'spatial_filter.enable',        'default': 'true', 'description': "''"},
+                        #    {'name': 'disparity_filter.enable',      'default': 'true', 'description': "''"},
+                        #    {'name': 'temporal_filter.enable',       'default': 'true', 'description': "''"},
+                        #    {'name': 'hole_filling_filter.enable',   'default': 'true', 'description': "''"},
+                        #    {'name': 'decimation_filter.enable',     'default': 'true', 'description': "''"}
                                                     ]
 
 def declare_configurable_parameters(parameters):
