@@ -78,14 +78,14 @@ docker-compose up
 docker exec -it master-thesis-rostorch-1 bash
 ```
 
-#### Build the ros2 workspace using:
+#### Build the ros2 workspace when in rostorch container using:
 ```
 cd docker-volume/ros_ws
 colcon build
 source install setup.bash
 ```
 
-#### Run pose_esitmator using:
+#### Run pose_esitmator when in rostorch container using:
 ```
 ros2 run pose_estimator pose_estimator
 ```
