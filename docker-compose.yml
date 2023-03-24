@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   rostorch:
-    image: e657577afeae
+    image: bf52e2915677
     privileged: true
     tty: true
     network_mode: host
@@ -19,9 +19,10 @@ services:
       - 'c 81:* rmw'
       - 'c 189:* rmw'
     runtime: nvidia
-
     
   realsense_ros2:
+    privileged: true
+    tty: true
     network_mode: host
     extends:
       file: realsense-ros2-docker/docker/docker-compose.yml
@@ -33,14 +34,3 @@ services:
     command: bash -c "source /opt/ros/humble/setup.bash && source install/setup.bash && ros2 launch realsense2_camera rs_launch.py align_depth.enable:=true enable_color:=true"
     
     runtime: nvidia
-  # jetson-inference:
-  #   build:
-  #     context: jetson-inference
-  #     dockerfile: Dockerfile
-  #     #target: librealsense
-  #   tty: true
-  #   environment:
-  #     - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-  #   volumes:
-  #     - /dev:/dev
-
