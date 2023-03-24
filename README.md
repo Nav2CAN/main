@@ -4,7 +4,7 @@ The project were conducted during the spring semester of 2023.
 
 # Docker
 
-## Docker install
+#### Docker install
 https://docs.docker.com/engine/install/ubuntu/
 #### Post install instructions 
 https://docs.docker.com/engine/install/linux-postinstall/
