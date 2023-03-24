@@ -65,6 +65,7 @@ cd /mnt/SDcard/master-thesis
 
 docker compose -f /realsense-ros2-docker/docker/docker-compose-nvidia.yml build
 ```
+After build update the image id of the rostorch container in the docker-compose.yml file 
 
 ## Use the docker containers
 *To use the docker containers for this project the **docker-compose.yml** file contains the needed instructions and the containers can be run using:*
