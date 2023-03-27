@@ -17,24 +17,4 @@ services:
       - /mnt/SDcard/master-thesis/jetson-inference/images:/jetson-inference/images # to save images
     runtime: nvidia
     # gets called on docker compose up and builds the workspace freshly
-    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && pip3 install transforms3d && tail -f /dev/null" 
-    
-  realsense_ros2:
-    extends:
-      file: realsense-ros2-docker/docker/docker-compose.yml
-      service: realsense_ros2
-    privileged: true
-    network_mode: host
-    tty: true
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - ROS_DOMAIN_ID=5
-    volumes: # attach our realsense launch files into realsense2_camera workspace
-      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_launch.py
-      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
-    runtime: nvidia
-    #rebuild realsense2_camera so we can access our launch files
-    command: bash -c "source /opt/ros/humble/setup.bash && colcon build --packages-select realsense2_camera && source install/setup.bash && ros2 launch realsense2_camera rs_ours_launch.py"
-    
-
+    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && tail -f /dev/null"
