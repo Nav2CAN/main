@@ -19,4 +19,4 @@ services:
       - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
     runtime: nvidia
     # gets called on docker compose up and builds the workspace freshly
-    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && tail -f /dev/null"
+    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && source install/setup.bash && cd ../ros2_ws/ && colcon build && source install/setup.bash && tail -f /dev/null"
