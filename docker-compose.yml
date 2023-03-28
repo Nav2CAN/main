@@ -1,17 +1,17 @@
 version: "3.9"
 services:
   rostorch:
-    image: bf52e2915677 # ros humble image with pytorch from the jetson container repo in this space
+    image: 1ca264896a65 # ros humble image with pytorch from the jetson container repo in this space
     privileged: true
     network_mode: host
     tty: true
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_VISIBLE_DEVICES=all #forward gpu device
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp #update to alternatice ROS middleware https://github.com/ros2/rclcpp/issues/1335
       - ROS_DOMAIN_ID=5
     volumes:
-      - /dev:/dev
-      - /mnt/SDcard/master-thesis/bash-setup:/root/.bashrc # attach a bashrc file to source our ros_ws
+      - /dev:/dev # allow access to all devices (realsense etc)
+      # - /mnt/SDcard/master-thesis/bash-setup:/root/.bashrc # attach a bashrc file to source our ros_ws
       - /mnt/SDcard/master-thesis/docker-volume/:/docker-volume
       - /mnt/SDcard/master-thesis/jetson-inference/data:/jetson-inference/data # for models and images
       - /mnt/SDcard/master-thesis/jetson-inference/images:/jetson-inference/images # to save images# attach our realsense launch files into realsense2_camera workspace
@@ -19,4 +19,4 @@ services:
       - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
     runtime: nvidia
     # gets called on docker compose up and builds the workspace freshly
-    command: bash -l -c "cd docker-volume/ros_ws/ && colcon build && source install/setup.bash && cd ../ros2_ws/ && colcon build && source install/setup.bash && tail -f /dev/null"
+    command: bash -l -c "cd /docker-volume/ros_ws/ && colcon build && source install/setup.bash && cd /ros2_ws/ && colcon build --packages-select realsense2_camera && source install/setup.bash && ros2 launch realsense2_camera rs_ours_launch.py"
