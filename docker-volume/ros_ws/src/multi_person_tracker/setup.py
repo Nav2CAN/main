@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'pose_estimator'
+package_name = 'multi_person_tracker'
 
 setup(
     name=package_name,
@@ -20,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-                'pose_estimator = pose_estimator.pose_estimator_node:main',
+                'multi_person_tracker = multi_person_tracker.multi_person_tracker:main',
         ],
 },
 )

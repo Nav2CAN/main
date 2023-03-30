@@ -88,7 +88,7 @@ source install setup.bash
 
 #### Run pose_esitmator when in rostorch container using:
 ```
-ros2 run pose_estimator pose_estimator
+ros2 run multi_person_tracker multi_person_tracker
 ```
 
 
