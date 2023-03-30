@@ -25,7 +25,7 @@ class PeopleDetector(Node):
     The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
     '''
 
-    def __init__(self, n_cameras: int = 1, publishPoseMsg: bool = True, debug: bool =True):
+    def __init__(self, n_cameras: int = 2, publishPoseMsg: bool = True, debug: bool =True):
         super().__init__('people_detector')
 
         # DC For data collection 
@@ -48,7 +48,7 @@ class PeopleDetector(Node):
         self.output = videoOutput(self.output_location, argv=['people_detector.py'])
 
         if n_cameras>1:
-            self.cameras = [Camera(self.default_callback_group,namespace="camera"+str(i)) for i in range(n_cameras)]
+            self.cameras = [Camera(self.default_callback_group,namespace="camera"+str(i+1)) for i in range(n_cameras)]
         else:
             self.cameras = [Camera(self.default_callback_group)]
 
@@ -68,9 +68,9 @@ class PeopleDetector(Node):
                 if self.publishPoseMsg:
                     camera.publishPoseArrows(kpPersons)
                 if len(kpPersons)!=0 and self.debug:
-                    camera.saveImage(kpPersons,self.imageCount,self.output,self.net,self.network)
+                    self.imageCount=camera.saveImage(kpPersons,self.imageCount,self.output,self.net,self.network)
                     self.peopleCount += len(kpPersons) 
-                    camera.writing(kpPersons,self.written) 
+                    self.written=camera.writing(kpPersons,self.written,self.imageCount) 
 
         return people, timestamps
     
@@ -141,7 +141,7 @@ class Camera(Node):
                 quad=quaternion_from_euler(0,0,(2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
                 marker = Marker()
                 marker.header.frame_id = "/"+self.namespace+"_link"
-                marker.header.stamp = self.timestamp.to_msg()
+                marker.header.stamp = self.get_clock().now().to_msg()
                 marker.type = 0
                 marker.id = 0
                 marker.pose.position.x = kpPerson.x
@@ -171,7 +171,7 @@ class Camera(Node):
                 quad=quaternion_from_euler(0,0,(2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
                 marker = Marker()
                 marker.header.frame_id = "/"+self.namespace+"_link"
-                marker.header.stamp = self.timestamp.to_msg()
+                marker.header.stamp = self.get_clock().now().to_msg()
                 marker.type = 8
                 marker.id = 0
                 marker.scale.x = .05
@@ -192,18 +192,19 @@ class Camera(Node):
 
 
     def saveImage(self,poses,imageCount, output,net,network):
-            imageCount += 1
-            print("detected {:d} objects in image".format(len(poses)))
-            for pose in poses:
-                print(pose)
-                print(pose.Keypoints)
-                # print('Links', pose.Links)
-            output.Render(self.cudaimage)
-            output.SetStatus("{:s} | Network {:.0f} FPS".format(network, net.GetNetworkFPS()))
-            net.PrintProfilerTimes()
+        imageCount += 1
+        print("detected {:d} objects in image".format(len(poses)))
+        for pose in poses:
+            print(pose)
+            print(pose.keypoints)
+            # print('Links', pose.Links)
+        output.Render(self.cudaimage)
+        output.SetStatus("{:s} | Network {:.0f} FPS".format(network, net.GetNetworkFPS()))
+        net.PrintProfilerTimes()
+        return imageCount
 
 
-    def writing(self, personlist, written):
+    def writing(self, personlist, written, imageCount):
         '''
         DC Function for writing csv file with person variables for captured images
         '''
@@ -219,6 +220,7 @@ class Camera(Node):
                 left_shoulder = next((point for point in person.keypoints if point.ID == 5), None)
                 right_shoulder = next((point for point in person.keypoints if point.ID == 6), None)
                 if left_shoulder and right_shoulder:
-                    writer.writerow([str(self.imageCount), str(self.timestamp), str(round(person.x,3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
+                    writer.writerow([str(imageCount), str(self.timestamp), str(round(person.x,3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
                                   str(round(left_shoulder.x, 3)), str(round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
                                   str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
+        return written
