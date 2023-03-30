@@ -35,7 +35,6 @@ class PeopleDetector(Node):
         self.debug = debug
         self.publishPoseMsg = publishPoseMsg
         self.cameras=[]
-  # prevent unused variable warning
 
         # Setup variables for PoseNet
         self.network = "resnet18-body"
@@ -59,7 +58,6 @@ class PeopleDetector(Node):
         people=[]
         timestamps=[]
         for camera in self.cameras:
-            print("detection")
             if(camera.cudaimage != None) and isinstance(camera.depth, np.ndarray):
                 poses = self.net.Process(camera.cudaimage, overlay=self.overlay)
                 kpPersons=camera.generatePeople(poses)
@@ -106,7 +104,6 @@ class Camera(Node):
 
     def rgb_callback(self, msg):
         try:
-            print("MOin")
             self.rgb = self.bridge.imgmsg_to_cv2(msg, desired_encoding='passthrough')
             cudaimage = cv2.cvtColor(self.rgb, cv2.COLOR_BGRA2RGBA).astype(np.float32) #converting the image to a cuda compatible image
             self.cudaimage = jetson_utils.cudaFromNumpy(cudaimage)
