@@ -74,8 +74,7 @@ class KalmanFilter(object):
 
     def predict(self):
         # Update time state
-        tempA = np.dot(self.A, self.x)
-        self.x =  tempA + np.dot(self.B, self.u)
+        self.x =  np.dot(self.A, self.x) + np.dot(self.B, self.u)
 
         # Calculate error covariance
         self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
@@ -84,6 +83,7 @@ class KalmanFilter(object):
         self.personX = self.x[0]
         self.personY = self.x[1]
         self.personTheta = self.x[2]
+
     
     def update(self, timestamp):
 
@@ -94,7 +94,8 @@ class KalmanFilter(object):
         # Calculate the Kalman Gain
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
 
-        self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
+        # self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
+        self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
 
         I = np.eye(self.H.shape[1])
 
@@ -215,11 +216,9 @@ class PeopleTracker(object):
         # update the tracklets with new detections
         if len(self.personList):
             updates = self.assignment.MunkresTrack(detections, self.personList, timestamp)
-            print(f"Updates are: {updates}")
-            print(f"Personlist is: {self.personList}")
+            
             for update in updates:
                 self.personList[update].update(timestamp)
-                print(f"Updated: {update}")
         
         else:
             for detection in detections:
