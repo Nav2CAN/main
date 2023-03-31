@@ -6,7 +6,7 @@ import numpy as np
 class KalmanFilter(object):
     def __init__(self, x, y, theta, timestamp,
                  dt = 0.033, u_x = 1, u_y  = 1, u_theta = 1,
-                 std_acc = 0.1, x_std_meas = 0.1, y_std_meas = 0.1, theta_std_meas = 0.1, debug = False):
+                 std_acc = 0.01, x_std_meas = 0.01, y_std_meas = 0.01, theta_std_meas = 0.01, debug = False):
         """
         :param dt: sampling time (time for 1 cycle)
         :param u_x: acceleration in x-direction
