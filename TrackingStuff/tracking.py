@@ -5,7 +5,7 @@ import numpy as np
 
 class KalmanFilter(object):
     def __init__(self, x, y, theta, timestamp,
-                 dt = 0.1, u_x = 1, u_y  = 1, u_theta = 1,
+                 dt = 0.1, u_x = 0, u_y  = 0, u_theta = 0,
                  std_acc = 0.0001, x_std_meas = 0.000001, y_std_meas = 0.000001, theta_std_meas = 0.000001, debug = False):
         """
         :param dt: sampling time (time for 1 cycle)
@@ -48,8 +48,8 @@ class KalmanFilter(object):
                             [0, (self.dt**2)/2, 0],
                             [0, 0, (self.dt**2)/2],
                             [self.dt, 0, 0],
-                            [0, 0, self.dt],
-                            [0, self.dt, 0]])
+                            [0, self.dt, 0],
+                            [0, 0, self.dt]])
 
         # Define Measurement Mapping Matrix
         self.H = np.matrix([[1, 0, 0, 0, 0, 0],
