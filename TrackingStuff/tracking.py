@@ -5,7 +5,7 @@ import numpy as np
 
 class KalmanFilter(object):
     def __init__(self, x, y, theta, timestamp,
-                 dt = 0.033, u_x = 1, u_y  = 1, u_theta = 1,
+                 dt = 0.1, u_x = 1, u_y  = 1, u_theta = 1,
                  std_acc = 0.01, x_std_meas = 0.01, y_std_meas = 0.01, theta_std_meas = 0.01, debug = False):
         """
         :param dt: sampling time (time for 1 cycle)
@@ -72,6 +72,20 @@ class KalmanFilter(object):
         #Initial Covariance Matrix
         self.P = np.eye(self.A.shape[1])
 
+    def angleWrap(self, old_angle, new_angle):
+        # function for wrapping angle around if input angle crosses boundary
+        r = 0
+
+        if new_angle - old_angle < -math.pi:
+            r += 1
+        elif new_angle - old_angle > math.pi:
+            r -= 1
+
+        out_angle = new_angle + r * 2 * math.pi
+
+        return out_angle
+
+
     def predict(self):
         # Update time state
         self.x =  np.dot(self.A, self.x) + np.dot(self.B, self.u)
@@ -86,6 +100,10 @@ class KalmanFilter(object):
 
     
     def update(self, timestamp):
+
+        print(f"before unwrap: {self.personTheta}, {self.x[2]}")
+        self.personTheta = self.angleWrap(self.x[2], self.personTheta)
+        print(f"after unwrap: {self.personTheta}, {self.x[2]}")
 
         z = [[self.personX], [self.personY], [self.personTheta]]
 
@@ -102,6 +120,9 @@ class KalmanFilter(object):
         # Update error covariance matrix
         self.P = (I - (K * self.H)) * self.P
         
+        # wrap angle between -pi and pi 
+        self.x[2] = np.mod(self.x[2]+np.pi, 2*np.pi)-np.pi
+
         # Update position
         self.personX = self.x[0]
         self.personY = self.x[1]
@@ -112,7 +133,7 @@ class KalmanFilter(object):
 class MunkresAssignment(object):
     def __init__(self,
                 detection_dist = 5,
-                gain = 1,
+                gain = 0.5,
                 debug = False):
         """
         :param centers: list of detected x, y and theta 
