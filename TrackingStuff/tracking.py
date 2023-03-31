@@ -6,7 +6,7 @@ import numpy as np
 class KalmanFilter(object):
     def __init__(self, x, y, theta, timestamp,
                  dt = 0.1, u_x = 1, u_y  = 1, u_theta = 1,
-                 std_acc = 0.01, x_std_meas = 0.01, y_std_meas = 0.01, theta_std_meas = 0.01, debug = False):
+                 std_acc = 0.001, x_std_meas = 0.000001, y_std_meas = 0.000001, theta_std_meas = 0.000001, debug = False):
         """
         :param dt: sampling time (time for 1 cycle)
         :param u_x: acceleration in x-direction
@@ -101,9 +101,9 @@ class KalmanFilter(object):
     
     def update(self, timestamp):
 
-        print(f"before unwrap: {self.personTheta}, {self.x[2]}")
+        #print(f"before unwrap: {self.personTheta}, {self.x[2]}")
         self.personTheta = self.angleWrap(self.x[2], self.personTheta)
-        print(f"after unwrap: {self.personTheta}, {self.x[2]}")
+        #print(f"after unwrap: {self.personTheta}, {self.x[2]}")
 
         z = [[self.personX], [self.personY], [self.personTheta]]
 
@@ -111,7 +111,8 @@ class KalmanFilter(object):
 
         # Calculate the Kalman Gain
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
-
+        print(f"Kalman gain:\n {K}")
+        
         # self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
         self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
 
