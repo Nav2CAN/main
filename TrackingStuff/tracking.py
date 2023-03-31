@@ -122,7 +122,7 @@ class KalmanFilter(object):
 
         # Calculate the Kalman Gain
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
-        print(f"Kalman gain:\n {K}")
+        # print(f"Kalman gain:\n {K}")
 
         # self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
         self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
