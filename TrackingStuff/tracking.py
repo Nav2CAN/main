@@ -20,6 +20,9 @@ class KalmanFilter(object):
             theta_std_meas=0.000001,
             debug=False):
         """
+        :param x: initial x measurement
+        :param y: initial y measurement
+        :param theta: initial orientation measurement
         :param dt: sampling time (time for 1 cycle)
         :param u_x: acceleration in x-direction
         :param u_y: acceleration in y-direction
