@@ -55,6 +55,9 @@ class PeopleDetector(Node):
         else:
             self.cameras = [Camera(self.default_callback_group)]
 
+        self.publisher_ = self.create_publisher(
+            MarkerArray, 'poses', 10)
+
     def detect(self):
         '''
         Perform pose estimation (with overlay)
@@ -68,16 +71,115 @@ class PeopleDetector(Node):
                 kpPersons = camera.generatePeople(poses)
                 people.append(kpPersons)
                 timestamps.append(camera.timestamp)
-                if self.publishPoseMsg:
-                    camera.publishPoseArrows(kpPersons)
+
                 if len(kpPersons) != 0 and self.debug:
-                    self.imageCount = camera.saveImage(
-                        kpPersons, self.imageCount, self.output, self.net, self.network)
+                    self.imageCount = self.saveImage(kpPersons)
                     self.peopleCount += len(kpPersons)
-                    self.written = camera.writing(
-                        kpPersons, self.written, self.imageCount)
+                    self.written = self.writing(kpPersons, camera.timestamp)
+
+        if self.publishPoseMsg:
+            self.publishPoseArrows(people)
 
         return people, timestamps
+
+    def publishPoseArrows(self, people):
+        # Set the scale of the marker
+        marker_array_msg = MarkerArray()
+        for kpPersons in people:
+            for i, kpPerson in enumerate(kpPersons):
+                # Set the pose of the marker
+                if (kpPerson.x and kpPerson.y and kpPerson.orientation):
+                    quad = quaternion_from_euler(
+                        0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
+                    marker = Marker()
+                    marker.header.frame_id = "/"+self.namespace+"_link"
+                    marker.header.stamp = self.get_clock().now().to_msg()
+                    marker.type = 0
+                    marker.id = i
+                    marker.pose.position.x = kpPerson.x
+                    marker.pose.position.y = kpPerson.y
+                    marker.pose.position.z = float(0)
+                    marker.pose.orientation.x = float(quad[0])
+                    marker.pose.orientation.y = float(quad[1])
+                    marker.pose.orientation.z = float(quad[2])
+                    marker.pose.orientation.w = float(quad[3])
+                    marker.scale.x = 1.0
+                    marker.scale.y = 0.1
+                    marker.scale.z = 0.1
+
+                    # Set the color
+                    marker.color.r = 0.0
+                    marker.color.g = 1.0
+                    marker.color.b = 0.0
+                    marker.color.a = 1.0
+                    marker.frame_locked = False
+                    marker_array_msg.markers.append(marker)
+        self.publisher_.publish(marker_array_msg)
+
+    def publishKeypointsMarker(self, people):
+        marker_array_msg = MarkerArray()
+        for kpPersons in people:
+            for i, kpPerson in enumerate(kpPersons):
+                # Set the pose of the marker
+                if (kpPerson.x and kpPerson.y and kpPerson.orientation):
+                    quad = quaternion_from_euler(
+                        0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
+                    marker = Marker()
+                    marker.header.frame_id = "/"+self.namespace+"_link"
+                    marker.header.stamp = self.get_clock().now().to_msg()
+                    marker.type = 8
+                    marker.id = i
+                    marker.scale.x = .05
+                    marker.scale.y = .05
+                    marker.scale.z = .05
+                    marker.color.r = 0.0
+                    marker.color.g = 1.0
+                    marker.color.b = 0.0
+                    marker.color.a = 1.0
+                    for kp in kpPerson.keypoints:
+                        point = Point()
+                        point.x = kp.x
+                        point.y = kp.y
+                        point.z = kp.z
+                        marker.points.append(point)
+                    marker_array_msg.markers.append(marker)
+        self.publisher_.publish(marker_array_msg)
+
+    def saveImage(self, personlist):
+        self.imageCount += 1
+        print("detected {:d} objects in image".format(len(personlist)))
+        for person in personlist:
+            print(person)
+            print(person.keypoints)
+            # print('Links', person.Links)
+        self.output.Render(self.cudaimage)
+        self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
+            self.network, self.net.GetNetworkFPS()))
+        self.net.PrintProfilerTimes()
+
+    def writing(self, personlist, timestamp):
+        '''
+        DC Function for writing csv file with person variables for captured images
+        '''
+        with open('SanityCheck.csv', mode='a') as csvfile:
+            writer = csv.writer(csvfile, delimiter=',',
+                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+            if not self.written:
+                writer.writerow(['ImageID', 'Timestamp', 'PersonX', 'PersonY', 'Orientation',
+                                 'left_shoulderX', 'left_shoulderY', 'left_shoulderZ',
+                                'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
+                self.written = True
+            for person in personlist:
+                left_shoulder = next(
+                    (point for point in person.keypoints if point.ID == 5), None)
+                right_shoulder = next(
+                    (point for point in person.keypoints if point.ID == 6), None)
+                if left_shoulder and right_shoulder:
+                    writer.writerow([str(self.imageCount), str(timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
+                                     str(round(left_shoulder.x, 3)), str(
+                                         round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
+                                     str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
 
 
 class Camera(Node):
@@ -89,8 +191,6 @@ class Camera(Node):
         self.namespace = namespace
         self.bridge = CvBridge()
         self.timestamp = None
-        self.publisher_ = self.create_publisher(
-            MarkerArray, 'poses', 10, callback_group=callback_group)
 
         self.rgb_subscription = self.create_subscription(
             Image,
@@ -138,102 +238,3 @@ class Camera(Node):
             kpPerson = person_keypoint(pose.Keypoints, self.depth)
             persons.append(kpPerson)
         return persons
-
-    def publishPoseArrows(self, kpPersons):
-        # Set the scale of the marker
-        marker_array_msg = MarkerArray()
-        for kpPerson in kpPersons:
-            # Set the pose of the marker
-            if (kpPerson.x and kpPerson.y and kpPerson.orientation):
-                quad = quaternion_from_euler(
-                    0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
-                marker = Marker()
-                marker.header.frame_id = "/"+self.namespace+"_link"
-                marker.header.stamp = self.get_clock().now().to_msg()
-                marker.type = 0
-                marker.id = 0
-                marker.pose.position.x = kpPerson.x
-                marker.pose.position.y = kpPerson.y
-                marker.pose.position.z = float(0)
-                marker.pose.orientation.x = float(quad[0])
-                marker.pose.orientation.y = float(quad[1])
-                marker.pose.orientation.z = float(quad[2])
-                marker.pose.orientation.w = float(quad[3])
-                marker.scale.x = 1.0
-                marker.scale.y = 0.1
-                marker.scale.z = 0.1
-
-                # Set the color
-                marker.color.r = 0.0
-                marker.color.g = 1.0
-                marker.color.b = 0.0
-                marker.color.a = 1.0
-                marker.frame_locked = False
-                marker_array_msg.markers.append(marker)
-        self.publisher_.publish(marker_array_msg)
-
-    def publishKeypointsMarker(self, kpPersons: List[person_keypoint]):
-        for kpPerson in kpPersons:
-            marker_array_msg = MarkerArray()
-            # Set the pose of the marker
-            if (kpPerson.x and kpPerson.y and kpPerson.orientation):
-                quad = quaternion_from_euler(
-                    0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
-                marker = Marker()
-                marker.header.frame_id = "/"+self.namespace+"_link"
-                marker.header.stamp = self.get_clock().now().to_msg()
-                marker.type = 8
-                marker.id = 0
-                marker.scale.x = .05
-                marker.scale.y = .05
-                marker.scale.z = .05
-                marker.color.r = 0.0
-                marker.color.g = 1.0
-                marker.color.b = 0.0
-                marker.color.a = 1.0
-                for kp in kpPerson.keypoints:
-                    point = Point()
-                    point.x = kp.x
-                    point.y = kp.y
-                    point.z = kp.z
-                    marker.points.append(point)
-                marker_array_msg.markers.append(marker)
-        self.publisher_.publish(marker_array_msg)
-
-    def saveImage(self, poses, imageCount, output, net, network):
-        imageCount += 1
-        print("detected {:d} objects in image".format(len(poses)))
-        for pose in poses:
-            print(pose)
-            print(pose.keypoints)
-            # print('Links', pose.Links)
-        output.Render(self.cudaimage)
-        output.SetStatus("{:s} | Network {:.0f} FPS".format(
-            network, net.GetNetworkFPS()))
-        net.PrintProfilerTimes()
-        return imageCount
-
-    def writing(self, personlist, written, imageCount):
-        '''
-        DC Function for writing csv file with person variables for captured images
-        '''
-        with open('SanityCheck.csv', mode='a') as csvfile:
-            writer = csv.writer(csvfile, delimiter=',',
-                                quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-            if not written:
-                writer.writerow(['ImageID', 'Timestamp', 'PersonX', 'PersonY', 'Orientation',
-                                 'left_shoulderX', 'left_shoulderY', 'left_shoulderZ',
-                                'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
-                written = True
-            for person in personlist:
-                left_shoulder = next(
-                    (point for point in person.keypoints if point.ID == 5), None)
-                right_shoulder = next(
-                    (point for point in person.keypoints if point.ID == 6), None)
-                if left_shoulder and right_shoulder:
-                    writer.writerow([str(imageCount), str(self.timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
-                                     str(round(left_shoulder.x, 3)), str(
-                                         round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
-                                     str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
-        return written
