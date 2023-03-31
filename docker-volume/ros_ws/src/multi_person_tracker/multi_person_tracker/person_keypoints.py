@@ -119,6 +119,8 @@ class person_keypoint:
             elif self.orientation>np.pi:
                 self.orientation-=2*np.pi
 
+            if self.orientation<0: self.orientation+=2*np.pi
+
     def getPersonPosition(self):
         kpx = []
         kpy = []
