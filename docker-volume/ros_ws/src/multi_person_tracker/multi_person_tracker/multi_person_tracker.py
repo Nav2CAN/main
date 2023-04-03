@@ -1,4 +1,5 @@
 import rclpy
+from rclpy import Node
 import threading
 import numpy as np
 from .people_detector import PeopleDetector
@@ -7,27 +8,28 @@ from .people_detector import PeopleDetector
 def main(args=None):
 
     rclpy.init(args=args)
-    people_detector = PeopleDetector(
-        n_cameras=2, debug=True)  # Start ROS2 node
-    thread = threading.Thread(
-        target=rclpy.spin, args=(people_detector, ), daemon=True)
-    thread.start()
+
+  # Start ROS2 node
+    dt = 0.05
+    multi_person_tracker = MultiPersonTracker(dt)
+    # thread = threading.Thread(
+    #     target=rclpy.spin, args=(people_detector, ), daemon=True)
+    # thread.start()
 
     executor = rclpy.executors.MultiThreadedExecutor()
-    executor.add_node(people_detector)
-    for camera in people_detector.cameras:
-        executor.add_node(camera)
+    executor.add_node(multi_person_tracker)
+    executor.add_node(multi_person_tracker.people_detector)
     # Spin in a separate thread
     executor_thread = threading.Thread(target=executor.spin, daemon=True)
     executor_thread.start()
 
-    rate = people_detector.create_rate(10)
+    rate = multi_person_tracker.create_rate(1/dt)
 
     try:
         while rclpy.ok():
             rate.sleep()
             # Make sure an image has been captured
-            people, timestamps = people_detector.detect()
+            people, timestamps = multi_person_tracker.predict()
 
             # TODO Non-maximum suppression on people
             # DC for data collection run only until a certain amount of people have been detected
