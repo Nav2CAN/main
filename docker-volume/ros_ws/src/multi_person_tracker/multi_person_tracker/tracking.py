@@ -39,6 +39,9 @@ class KalmanFilter(object):
         self.personX = x
         self.personY = y
         self.personTheta = theta
+        self.personXdot = 0
+        self.personYdot = 0
+        self.personThetadot = 0
         self.timestamp = timestamp
 
         self.measX = x
@@ -54,7 +57,7 @@ class KalmanFilter(object):
 
         # Intial State
         self.x = np.matrix([[self.personX], [self.personY], [
-                           self.personTheta], [0], [0], [0]])
+                           self.personTheta], [self.personXdot], [self.personYdot], [self.personThetadot]])
 
         # Define the State Transition Matrix A
         self.A, self.Q = None, None
@@ -105,6 +108,9 @@ class KalmanFilter(object):
         self.personX = self.x[0]
         self.personY = self.x[1]
         self.personTheta = self.x[2]
+        self.personXdot = self.x[3]
+        self.personYdot = self.x[4]
+        self.personThetadot = self.x[5]
 
     def generateMatricies(self, dt):
 
@@ -156,6 +162,9 @@ class KalmanFilter(object):
         self.personX = self.x[0]
         self.personY = self.x[1]
         self.personTheta = self.x[2]
+        self.personXdot = self.x[3]
+        self.personYdot = self.x[4]
+        self.personThetadot = self.x[5]
         self.timestamp = self.meastimestamp
 
 
