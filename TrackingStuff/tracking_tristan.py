@@ -1,7 +1,7 @@
 import munkres
 import math
 import numpy as np
-
+from kalmanFilterTristan import personTracker
 
 class KalmanFilter(object):
     def __init__(
@@ -41,14 +41,9 @@ class KalmanFilter(object):
         self.personTheta = theta
         self.timestamp = timestamp
 
-        self.measX = x
-        self.measY = y
-        self.measTheta = theta
-        self.measTimestamp = timestamp
-
         # Define sampling time
         self.dt = dt
-        self.std_acc = std_acc
+
         # Define the  control input variables
         self.u = np.matrix([[u_x], [u_y], [u_theta]])
 
@@ -57,9 +52,12 @@ class KalmanFilter(object):
                            self.personTheta], [0], [0], [0]])
 
         # Define the State Transition Matrix A
-        self.A, self.Q = None, None
-
-        self.generateMatricies(dt)
+        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
+                            [0, 1, 0, 0, self.dt, 0],
+                            [0, 0, 1, 0, 0, self.dt],
+                            [0, 0, 0, 1, 0, 0],
+                            [0, 0, 0, 0, 1, 0],
+                            [0, 0, 0, 0, 0, 1]])
 
         # Define the Control Input Matrix B
         self.B = np.matrix([[(self.dt**2) / 2, 0, 0],
@@ -74,6 +72,14 @@ class KalmanFilter(object):
                             [0, 1, 0, 0, 0, 0],
                             [0, 0, 1, 0, 0, 0]])
 
+        # Initial Process Noise Covariance
+        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
+                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
+                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
+                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
+                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
+                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * std_acc**2
+
         # Initial Measurement Noise Covariance
         self.R = np.matrix([[x_std_meas**2, 0, 0],
                            [0, y_std_meas**2, 0],
@@ -84,11 +90,12 @@ class KalmanFilter(object):
 
     def angleWrap(self, old_angle, new_angle):
         # function for wrapping angle around if input angle crosses boundary
+        r = 0
 
         if new_angle - old_angle < -math.pi:
-            r = 1
+            r += 1
         elif new_angle - old_angle > math.pi:
-            r = -1
+            r -= 1
 
         out_angle = new_angle + r * 2 * math.pi
 
@@ -106,34 +113,13 @@ class KalmanFilter(object):
         self.personY = self.x[1]
         self.personTheta = self.x[2]
 
-    def generateMatricies(self, dt):
-
-        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
-                            [0, 1, 0, 0, self.dt, 0],
-                            [0, 0, 1, 0, 0, self.dt],
-                            [0, 0, 0, 1, 0, 0],
-                            [0, 0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 0, 1]])
-
-        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
-                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
-                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
-                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
-                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
-                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
-
-    def update(self):
+    def update(self, timestamp):
 
         # print(f"before unwrap: {self.personTheta}, {self.x[2]}")
         self.personTheta = self.angleWrap(self.x[2], self.personTheta)
         # print(f"after unwrap: {self.personTheta}, {self.x[2]}")
 
-        z = [[self.measX], [self.measY], [self.measTheta]]
-
-        # time difference and map from [ns] to [s]
-        dt = abs(self.meastimestamp-self.timestamp)*1e-9
-
-        self.generateMatricies(dt)
+        z = [[self.personX], [self.personY], [self.personTheta]]
 
         S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
 
@@ -156,7 +142,7 @@ class KalmanFilter(object):
         self.personX = self.x[0]
         self.personY = self.x[1]
         self.personTheta = self.x[2]
-        self.timestamp = self.meastimestamp
+        self.timestamp = timestamp
 
 
 class MunkresAssignment(object):
@@ -191,20 +177,19 @@ class MunkresAssignment(object):
             currentPosY = person.personY
             currentPosTheta = person.personTheta
             dists = []
+            # print(detections)
             for detection in detections:
                 newPosX = detection.x
                 newPosY = detection.y
                 newPosTheta = detection.orientation
 
-                dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + \
-                    self.gain * abs(newPosTheta -
-                                    currentPosTheta) / (2 * math.pi)
+                dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + self.gain * abs(newPosTheta - currentPosTheta) / (2 * math.pi)
+     
                 if dist <= self.detection_dist:
                     dists.append(dist)
                 else:
                     dists.append(self.NotAllowedForMunkres)
             distances.append(dists)
-
         # Find shortest distances
         m = munkres.Munkres()
         self.indexes = m.compute(distances)
@@ -217,77 +202,84 @@ class MunkresAssignment(object):
         if len(detections) == len(tracklets):
             if self.debug:
                 print("same length")
-            for index in indexes:
+            for index in self.indexes:
+                # tracklets[index[0]].personX = detections[index[1]].x
+                # tracklets[index[0]].personY = detections[index[1]].y
+                # tracklets[index[0]].personTheta = detections[index[1]].orientation
+                # tracklets[index[0]].timestamp = timestamp
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
                 updates.append(index[0])
+            return updates
 
         elif len(tracklets) < len(detections):
             if self.debug:
                 print("More detections")
-            for index in indexes:
+            for index in self.indexes:
+                # tracklets[index[0]].personX = detections[index[1]].x
+                # tracklets[index[0]].personY = detections[index[1]].y
+                # tracklets[index[0]].personTheta = detections[index[1]].orientation
+                # tracklets[index[0]].timestamp = timestamp
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
                 detections.pop(index[1])
                 updates.append(index[0])
 
             for detection in detections:
                 tracklets.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        timestamp))
+                    # KalmanFilter(
+                    #     detection.x,
+                    #     detection.y,
+                    #     detection.orientation,
+                    #     timestamp)
+                    personTracker(timestamp, (detection.x,detection.y,detection.orientation)))
+            return updates
 
         elif len(tracklets) > len(detections):
             if self.debug:
                 print("More tracklets")
-            for index in indexes:
+            for index in self.indexes:
+                # tracklets[index[0]].personX = detections[index[1]].x
+                # tracklets[index[0]].personY = detections[index[1]].y
+                # tracklets[index[0]].personTheta = detections[index[1]].orientation
+                # tracklets[index[0]].timestamp = timestamp
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
                 updates.append(index[0])
-
-        return updates
+            return updates
 
 
 class PeopleTracker(object):
-    def __init__(self, debug=False, keeptime=5):
+    def __init__(self, debug=False):
         # initialise the tracker with an empty list of people
 
         self.assignment = MunkresAssignment(debug=debug)
-        self.keeptime = keeptime
-        self.personList = []
+        self.personList:list[personTracker] = []
 
     def predict(self):
         # perform prediction with the Kalman filter
         for person in self.personList:
-            person.predict()
+            person.kfPredict()
 
     def update(self, detections, timestamp):
         # update the tracklets with new detections
         if len(self.personList):
-            # remove person if it hasn't been detected in too long
-            for person in self.personlist:
-                if abs(timestamp-person.timestamp)*1e-9 > self.keeptime:
-                    self.personlist.pop(person)
-
             updates = self.assignment.MunkresTrack(
                 detections, self.personList, timestamp)
 
             for update in updates:
-                self.personList[update].update(timestamp)
+                self.personList[update].kfUpdate(timestamp)
 
         else:
             for detection in detections:
-                self.personList.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        timestamp))
+                # self.personList.append(
+                #     KalmanFilter(
+                #         detection.x,
+                #         detection.y,
+                #         detection.orientation,
+                #         timestamp))
+                self.personList.append(personTracker(timestamp, (detection.x,detection.y,detection.orientation)))
+        # TODO add a popping function of "old" people
