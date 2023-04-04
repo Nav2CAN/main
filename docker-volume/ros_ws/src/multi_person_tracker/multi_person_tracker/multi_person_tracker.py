@@ -1,4 +1,5 @@
 import rclpy
+import os
 from rclpy.node import Node
 import threading
 import numpy as np
@@ -29,6 +30,12 @@ class Detection:
 
 class MultiPersonTracker(Node):
     def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1, n_cameras=2, keeptime=5):
+        '''
+        Class for pose estimation of a person using Nvidia jetson Orin implementation
+        of PoseNet and passing messages using ROS2.
+        The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
+        '''
+        # TODO expand Brief
         super().__init__('multi_person_tracker')
         self.create_timer(dt, self.timer_callback)
         self.people_tracker = PeopleTracker(debug=False, keeptime=keeptime)
@@ -40,10 +47,36 @@ class MultiPersonTracker(Node):
         self.publishPoseMsg = publishPoseMsg
         self.debug = debug
 
+        ### Variables for pose detection###
+        self.peopleCount = 0
+        self.imageCount = -1
+        self.written = False
+        self.cameras = []
+
+        # Setup variables for PoseNet
+        self.network = "resnet18-body"
+        self.overlay = "links,keypoints,boxes"
+        self.threshold = 0.3
+        self.output_location = "/docker-volume/images"  # only needed for saving images
+
+        # Initialising PoseNet and its output
+        self.net = poseNet(
+            self.network, [os.path.basename(__file__)], self.threshold)
+        self.output = videoOutput(self.output_location, argv=[
+            os.path.basename(__file__)])
+
+        # Initialize camera objects with propper namespacing
+        if n_cameras > 1:
+            self.cameras = [self.tracker.Camera(self, namespace="camera"+str(i+1))
+                            for i in range(n_cameras)]
+        else:
+            self.cameras = [self.Camera(self)]
+
     def timer_callback(self):
         # Publishes Tracker Ouput and predicts next state
         people = People()
         people.header.stamp = self.get_clock().now().to_msg()
+        # TODO change when we have tf goodness
         people.header.frame_id = "/camera1_link"
         # TODO implement index and reliabílity
         for p in self.people_tracker.personList:
@@ -71,6 +104,7 @@ class MultiPersonTracker(Node):
                 quad = quaternion_from_euler(
                     0, 0, (2*np.pi + person.personTheta if person.personTheta < 0 else person.personTheta))
                 marker = Marker()
+                # TODO change when we have tf goodness
                 marker.header.frame_id = "/camera1_link"
                 marker.header.stamp = self.get_clock().now().to_msg()
                 marker.type = 0
@@ -128,60 +162,24 @@ class MultiPersonTracker(Node):
     #                 marker_array_msg.markers.append(marker)
     #     self.publisher_.publish(marker_array_msg)
 
-    class PeopleDetector(object):
+    def detect(self, cudaImage, depthImage):
         '''
-        Class for pose estimation of a person using Nvidia jetson Orin implementation
-        of PoseNet and passing messages using ROS2.
-        The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
+        Perform pose estimation (with overlay)
         '''
+        if (cudaImage != None) and isinstance(depthImage, np.ndarray):
+            poses = self.net.Process(
+                cudaImage, overlay=self.overlay)
+            return poses
+        else:
+            return None
 
-        def __init__(self, tracker_self, n_cameras: int = 2, debug: bool = True):
-            print("init detector")
-            # DC For data collection
-            self.peopleCount = 0
-            self.imageCount = -1
-            self.written = False
-            self.debug = debug
-            self.cameras = []
-            self.tracker = tracker_self
-
-            # Setup variables for PoseNet
-            self.network = "resnet18-body"
-            self.overlay = "links,keypoints,boxes"
-            self.threshold = 0.3
-            self.output_location = "/docker-volume/images"  # only needed for saving images
-
-            # Initialising PoseNet and its output
-            self.net = poseNet(
-                self.network, ['multi_person_tracker.py'], self.threshold)
-            self.output = videoOutput(self.output_location, argv=[
-                'multi_person_tracker.py'])
-
-            # Initialize camera objects with propper namespacing
-            if n_cameras > 1:
-                self.cameras = [self.tracker.Camera(tracker_self, namespace="camera"+str(i+1))
-                                for i in range(n_cameras)]
-            else:
-                self.cameras = [self.Camera(tracker_self)]
-
-        def detect(self, cudaImage, depthImage):
-            '''
-            Perform pose estimation (with overlay)
-            '''
-            if (cudaImage != None) and isinstance(depthImage, np.ndarray):
-                poses = self.net.Process(
-                    cudaImage, overlay=self.overlay)
-                return poses
-            else:
-                return None
-
-        def saveImage(self, cudaImage):
-            # render an image of the camera with a pose overlay
-            self.imageCount += 1
-            self.output.Render(cudaImage)
-            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
-                self.network, self.net.GetNetworkFPS()))
-            self.net.PrintProfilerTimes()
+    def saveImage(self, cudaImage):
+        # render an image of the camera with a pose overlay
+        self.imageCount += 1
+        self.output.Render(cudaImage)
+        self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
+            self.network, self.net.GetNetworkFPS()))
+        self.net.PrintProfilerTimes()
 
     class Camera(object):
         def __init__(self, tracker_self, namespace: str = "camera", debug: bool = False):
@@ -219,7 +217,7 @@ class MultiPersonTracker(Node):
                 self.timestamp = self.tracker.get_clock().now().nanoseconds
 
                 # detect poses when new rgb immage is available
-                poses = self.tracker.people_detector.detect(
+                poses = self.tracker.detect(
                     self.cudaimage, self.depth)
 
                 # generate 3D coordinates for all keypoints and calculate x,y,theta
