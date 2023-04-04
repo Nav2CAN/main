@@ -87,7 +87,7 @@ class KalmanFilter(object):
 
     def angleWrap(self, old_angle, new_angle):
         # function for wrapping angle around if input angle crosses boundary
-        r=0
+        r = 0
         if new_angle - old_angle < -math.pi:
             r = 1
         elif new_angle - old_angle > math.pi:
@@ -204,7 +204,7 @@ class MunkresAssignment(object):
                 newPosX = detection.x
                 newPosY = detection.y
                 newPosTheta = detection.orientation
-                
+
                 dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + \
                     self.gain * abs(newPosTheta -
                                     currentPosTheta) / (2 * math.pi)
