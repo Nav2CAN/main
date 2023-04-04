@@ -87,7 +87,7 @@ class KalmanFilter(object):
 
     def angleWrap(self, old_angle, new_angle):
         # function for wrapping angle around if input angle crosses boundary
-
+        r=0
         if new_angle - old_angle < -math.pi:
             r = 1
         elif new_angle - old_angle > math.pi:
@@ -137,7 +137,7 @@ class KalmanFilter(object):
         z = [[self.measX], [self.measY], [self.measTheta]]
 
         # time difference and map from [ns] to [s]
-        dt = abs(self.meastimestamp-self.timestamp)*1e-9
+        dt = abs(self.measTimestamp-self.timestamp)*1e-9
 
         self.generateMatricies(dt)
 
@@ -165,12 +165,12 @@ class KalmanFilter(object):
         self.personXdot = self.x[3]
         self.personYdot = self.x[4]
         self.personThetadot = self.x[5]
-        self.timestamp = self.meastimestamp
+        self.timestamp = self.measTimestamp
 
 
 class MunkresAssignment(object):
     def __init__(self,
-                 detection_dist=5,
+                 detection_dist=5000,
                  gain=0.5,
                  debug=False):
         """
@@ -204,7 +204,7 @@ class MunkresAssignment(object):
                 newPosX = detection.x
                 newPosY = detection.y
                 newPosTheta = detection.orientation
-
+                
                 dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + \
                     self.gain * abs(newPosTheta -
                                     currentPosTheta) / (2 * math.pi)
@@ -282,15 +282,15 @@ class PeopleTracker(object):
         # update the tracklets with new detections
         if len(self.personList):
             # remove person if it hasn't been detected in too long
-            for person in self.personlist:
-                if abs(timestamp-person.timestamp)*1e-9 > self.keeptime:
-                    self.personlist.pop(person)
+            for i in range(len(self.personList)):
+                if abs(timestamp-self.personList[i].timestamp)*1e-9 > self.keeptime:
+                    self.personList.pop(i)
 
             updates = self.assignment.MunkresTrack(
                 detections, self.personList, timestamp)
 
             for update in updates:
-                self.personList[update].update(timestamp)
+                self.personList[update].update()
 
         else:
             for detection in detections:

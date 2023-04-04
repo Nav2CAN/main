@@ -1,7 +1,8 @@
 import rclpy
-from rclpy import Node
+from rclpy.node import Node
 import threading
 import numpy as np
+import cv2
 from cv_bridge import CvBridge
 from tf_transformations import quaternion_from_euler
 import jetson_utils
@@ -27,35 +28,104 @@ class Detection:
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, debug: bool = False, dt=0.1, keeptime=5):
+    def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1,n_cameras=2, keeptime=5):
         super().__init__('multi_person_tracker')
-        self.create_timer(dt, self.time_callback)
-
-        self.people_detector = self.PeopleDetector(n_cameras=2, debug=debug)
-        self.people_tracker = PeopleTracker(debug=debug, keeptime=keeptime)
+        self.create_timer(dt, self.timer_callback)
+        self.people_tracker = PeopleTracker(debug=False, keeptime=keeptime)
+        self.people_detector = self.PeopleDetector(self, n_cameras=n_cameras, debug=debug)
         self.people_publisher = self.create_publisher(People, 'people', 10)
+        self.people_arrow_publisher = self.create_publisher(
+                MarkerArray, 'people_arrows', 10)
+        self.publishPoseMsg=publishPoseMsg
+        self.debug=debug
 
     def timer_callback(self):
         # Publishes Tracker Ouput and predicts next state
         people = People()
         people.header.stamp = self.get_clock().now().to_msg()
-        people.header.frame_id = "/map"
+        people.header.frame_id = "/camera1_link"
         # TODO implement index and reliabílity
         for p in self.people_tracker.personList:
             person = Person()
-            person.position.x = p.personX
-            person.position.y = p.personY
-            person.position.z = p.personTheta
-            person.velocity.x = p.personXdot
-            person.velocity.y = p.personYdot
-            person.velocity.z = p.personThetadot
+            person.position.x = float(p.personX)
+            person.position.y = float(p.personY)
+            person.position.z = float(p.personTheta)
+            person.velocity.x = float(p.personXdot)
+            person.velocity.y = float(p.personYdot)
+            person.velocity.z = float(p.personThetadot)
             people.people.append(person)
 
         self.people_publisher.publish(people)
+        if self.publishPoseMsg:
+            self.publishPoseArrows(self.people_tracker.personList)
+
         self.people_tracker.predict()
 
-    def update(self):
-        self.people_tracker.update()
+    def publishPoseArrows(self, people):
+        # Set the scale of the marker
+        marker_array_msg = MarkerArray()
+        for i,person in enumerate(people):
+                # Set the pose of the marker
+                if (person.personX and person.personY and person.personTheta):
+                    quad = quaternion_from_euler(
+                        0, 0, (2*np.pi + person.personTheta if person.personTheta < 0 else person.personTheta))
+                    marker = Marker()
+                    marker.header.frame_id = "/camera1_link"
+                    marker.header.stamp = self.get_clock().now().to_msg()
+                    marker.type = 0
+                    marker.id = i
+                    marker.pose.position.x = float(person.personX)
+                    marker.pose.position.y = float(person.personY)
+                    marker.pose.position.z = float(0)
+                    marker.pose.orientation.x = float(quad[0])
+                    marker.pose.orientation.y = float(quad[1])
+                    marker.pose.orientation.z = float(quad[2])
+                    marker.pose.orientation.w = float(quad[3])
+                    marker.scale.x = 1.0
+                    marker.scale.y = 0.1
+                    marker.scale.z = 0.1
+
+                    # Set the color
+                    marker.color.r = 0.0
+                    marker.color.g = 1.0
+                    marker.color.b = 0.0
+                    marker.color.a = 1.0
+                    marker.frame_locked = False
+                    marker_array_msg.markers.append(marker)
+        self.people_arrow_publisher.publish(marker_array_msg)
+    
+    #########################################################################
+    #THIS MIGHT BE USEFULL FOR THE REPORT SOMETIME BUT FOR NOW NOT NECESSARY#
+    #########################################################################
+
+    # def publishKeypointsMarker(self, people):
+    #     marker_array_msg = MarkerArray()
+    #     for kpPersons in people:
+    #         for i, kpPerson in enumerate(kpPersons):
+    #             # Set the pose of the marker
+    #             if (kpPerson.x and kpPerson.y and kpPerson.orientation):
+    #                 quad = quaternion_from_euler(
+    #                     0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
+    #                 marker = Marker()
+    #                 marker.header.frame_id = "/"+self.namespace+"_link"
+    #                 marker.header.stamp = self.get_clock().now().to_msg()
+    #                 marker.type = 8
+    #                 marker.id = i
+    #                 marker.scale.x = .05
+    #                 marker.scale.y = .05
+    #                 marker.scale.z = .05
+    #                 marker.color.r = 0.0
+    #                 marker.color.g = 1.0
+    #                 marker.color.b = 0.0
+    #                 marker.color.a = 1.0
+    #                 for kp in kpPerson.keypoints:
+    #                     point = Point()
+    #                     point.x = kp.x
+    #                     point.y = kp.y
+    #                     point.z = kp.z
+    #                     marker.points.append(point)
+    #                 marker_array_msg.markers.append(marker)
+    #     self.publisher_.publish(marker_array_msg)
 
     class PeopleDetector(object):
         '''
@@ -64,16 +134,15 @@ class MultiPersonTracker(Node):
         The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
         '''
 
-        def __init__(self, n_cameras: int = 2, publishPoseMsg: bool = True, debug: bool = True):
-            super().__init__('people_detector')
-
+        def __init__(self, tracker_self, n_cameras: int = 2, debug: bool = True):
+            print("init detector")
             # DC For data collection
             self.peopleCount = 0
             self.imageCount = -1
             self.written = False
             self.debug = debug
-            self.publishPoseMsg = publishPoseMsg
             self.cameras = []
+            self.tracker= tracker_self
 
             # Setup variables for PoseNet
             self.network = "resnet18-body"
@@ -83,46 +152,107 @@ class MultiPersonTracker(Node):
 
             # Initialising PoseNet and its output
             self.net = poseNet(
-                self.network, ['people_detector.py'], self.threshold)
+                self.network, ['multi_person_tracker.py'], self.threshold)
             self.output = videoOutput(self.output_location, argv=[
-                'people_detector.py'])
-
+                'multi_person_tracker.py'])
+            
+            #Initialize camera objects with propper namespacing
             if n_cameras > 1:
-                self.cameras = [MultiPersonTracker.Camera(namespace="camera"+str(i+1))
+                self.cameras = [self.tracker.Camera(tracker_self, namespace="camera"+str(i+1))
                                 for i in range(n_cameras)]
             else:
-                self.cameras = [self.Camera()]
+                self.cameras = [self.Camera(tracker_self)]
 
-            self.publisher_ = MultiPersonTracker.create_publisher(
-                MarkerArray, 'poses', 10)
-
-        def detect(self, cudaImage, depthImage, timestamp, frame_id):
+        def detect(self, cudaImage, depthImage):
             '''
             Perform pose estimation (with overlay)
             '''
-            # TODO tf transform to map
-            people = []
-
             if (cudaImage != None) and isinstance(depthImage, np.ndarray):
                 poses = self.net.Process(
                     cudaImage, overlay=self.overlay)
+                return poses
+            else: 
+                return None
+
+        def saveImage(self,cudaImage):
+            #render an image of the camera with a pose overlay
+            self.imageCount += 1
+            self.output.Render(cudaImage)
+            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
+                self.network, self.net.GetNetworkFPS()))
+            self.net.PrintProfilerTimes()
+
+    class Camera(object):
+        def __init__(self,tracker_self, namespace: str = "camera", debug: bool = False):
+            print("init camera")
+            self.rgb = None
+            self.cudaimage = None
+            self.depth = None
+            self.namespace = namespace
+            self.bridge = CvBridge()
+            self.timestamp = None
+            self.tracker=tracker_self
+            self.debug=debug
+
+            #Initialize subscribers in tracker object for this camera
+            self.rgb_subscription = self.tracker.create_subscription(
+                Image,
+                '/' + namespace+'/color/image_raw',
+                self.rgb_callback,
+                10)
+
+            self.depth_subscription = self.tracker.create_subscription(
+                Image,
+                '/' + namespace+'/aligned_depth_to_color/image_raw',
+                self.depth_callback,
+                10)
+
+        def rgb_callback(self, msg):
+            try:
+                #conversions
+                self.rgb = self.bridge.imgmsg_to_cv2(
+                    msg, desired_encoding='passthrough')
+                cudaimage = cv2.cvtColor(self.rgb, cv2.COLOR_BGRA2RGBA).astype(
+                    np.float32)  # converting the image to a cuda compatible image
+                self.cudaimage = jetson_utils.cudaFromNumpy(cudaimage)
+                self.timestamp = self.tracker.get_clock().now().nanoseconds
+
+                # detect poses when new rgb immage is available
+                poses = self.tracker.people_detector.detect(self.cudaimage, self.depth)
+                
+                #generate 3D coordinates for all keypoints and calculate x,y,theta
                 kpPersons = self.generatePeople(poses)
-                people.append(kpPersons)
+
+                #make detection objects
                 detections = []
-                for person in people:
+                for person in kpPersons:
                     detections.append(
                         Detection(person.x, person.y, person.orientation))
-                MultiPersonTracker.update(
-                    detections, timestamp)  # Track people
-                if len(kpPersons) != 0 and self.debug:
-                    self.imageCount = self.saveImage(kpPersons)
-                    self.peopleCount += len(kpPersons)
-                    self.written = self.writing(kpPersons, timestamp)
 
-            # if self.publishPoseMsg:
-            #     self.publishPoseArrows(people)
+                # Update tracker with new detections
+                if len(detections)!=0:
+                    self.tracker.people_tracker.update(
+                        detections, self.timestamp)  
+                    
+                    #save image and make csv if required
+                    if self.debug:
+                        self.written = self.writing(kpPersons)
+                        self.tracker.pose_detector.peopleCount += len(kpPersons)
+                        self.tracker.pose_detector.saveImage(self.cudaimage)
+            except:
+                pass
 
-            return people, timestamp
+        def depth_callback(self, msg):
+            #get and update depth image
+            try:
+                depth = self.bridge.imgmsg_to_cv2(
+                    msg, desired_encoding='passthrough')
+                self.depth = np.array(depth, dtype=np.float32)*0.001
+                # TODO Check do we actually want to update the timestamp
+                self.timestamp = self.tracker.get_clock().now().nanoseconds
+            except:
+                pass
+
 
         def generatePeople(self, poses):
             '''
@@ -133,82 +263,8 @@ class MultiPersonTracker(Node):
                 kpPerson = person_keypoint(pose.Keypoints, self.depth)
                 persons.append(kpPerson)
             return persons
-        # def publishPoseArrows(self, people):
-        #     # Set the scale of the marker
-        #     marker_array_msg = MarkerArray()
-        #     for kpPersons in people:
-        #         for i, kpPerson in enumerate(kpPersons):
-        #             # Set the pose of the marker
-        #             if (kpPerson.x and kpPerson.y and kpPerson.orientation):
-        #                 quad = quaternion_from_euler(
-        #                     0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
-        #                 marker = Marker()
-        #                 marker.header.frame_id = "/"+self.namespace+"_link"
-        #                 marker.header.stamp = self.get_clock().now().to_msg()
-        #                 marker.type = 0
-        #                 marker.id = i
-        #                 marker.pose.position.x = kpPerson.x
-        #                 marker.pose.position.y = kpPerson.y
-        #                 marker.pose.position.z = float(0)
-        #                 marker.pose.orientation.x = float(quad[0])
-        #                 marker.pose.orientation.y = float(quad[1])
-        #                 marker.pose.orientation.z = float(quad[2])
-        #                 marker.pose.orientation.w = float(quad[3])
-        #                 marker.scale.x = 1.0
-        #                 marker.scale.y = 0.1
-        #                 marker.scale.z = 0.1
-
-        #                 # Set the color
-        #                 marker.color.r = 0.0
-        #                 marker.color.g = 1.0
-        #                 marker.color.b = 0.0
-        #                 marker.color.a = 1.0
-        #                 marker.frame_locked = False
-        #                 marker_array_msg.markers.append(marker)
-        #     self.publisher_.publish(marker_array_msg)
-
-        # def publishKeypointsMarker(self, people):
-        #     marker_array_msg = MarkerArray()
-        #     for kpPersons in people:
-        #         for i, kpPerson in enumerate(kpPersons):
-        #             # Set the pose of the marker
-        #             if (kpPerson.x and kpPerson.y and kpPerson.orientation):
-        #                 quad = quaternion_from_euler(
-        #                     0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
-        #                 marker = Marker()
-        #                 marker.header.frame_id = "/"+self.namespace+"_link"
-        #                 marker.header.stamp = self.get_clock().now().to_msg()
-        #                 marker.type = 8
-        #                 marker.id = i
-        #                 marker.scale.x = .05
-        #                 marker.scale.y = .05
-        #                 marker.scale.z = .05
-        #                 marker.color.r = 0.0
-        #                 marker.color.g = 1.0
-        #                 marker.color.b = 0.0
-        #                 marker.color.a = 1.0
-        #                 for kp in kpPerson.keypoints:
-        #                     point = Point()
-        #                     point.x = kp.x
-        #                     point.y = kp.y
-        #                     point.z = kp.z
-        #                     marker.points.append(point)
-        #                 marker_array_msg.markers.append(marker)
-        #     self.publisher_.publish(marker_array_msg)
-
-        def saveImage(self, personlist):
-            self.imageCount += 1
-            print("detected {:d} objects in image".format(len(personlist)))
-            for person in personlist:
-                print(person)
-                print(person.keypoints)
-                # print('Links', person.Links)
-            self.output.Render(self.cudaimage)
-            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
-                self.network, self.net.GetNetworkFPS()))
-            self.net.PrintProfilerTimes()
-
-        def writing(self, personlist, timestamp):
+        
+        def writing(self, personlist):
             '''
             DC Function for writing csv file with person variables for captured images
             '''
@@ -219,7 +275,7 @@ class MultiPersonTracker(Node):
                 if not self.written:
                     writer.writerow(['ImageID', 'Timestamp', 'PersonX', 'PersonY', 'Orientation',
                                     'left_shoulderX', 'left_shoulderY', 'left_shoulderZ',
-                                     'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
+                                        'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
                     self.written = True
                 for person in personlist:
                     left_shoulder = next(
@@ -227,58 +283,11 @@ class MultiPersonTracker(Node):
                     right_shoulder = next(
                         (point for point in person.keypoints if point.ID == 6), None)
                     if left_shoulder and right_shoulder:
-                        writer.writerow([str(self.imageCount), str(timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
+                        writer.writerow([str(self.imageCount), str(self.timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
                                         str(round(left_shoulder.x, 3)), str(
                                             round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
                                         str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
 
-    class Camera(object):
-        def __init__(self, namespace: str = "camera"):
-            super().__init__(namespace+"_callback")
-            self.rgb = None
-            self.cudaimage = None
-            self.depth = None
-            self.namespace = namespace
-            self.bridge = CvBridge()
-            self.timestamp = None
-
-            self.rgb_subscription = MultiPersonTracker.create_subscription(
-                Image,
-                '/' + namespace+'/color/image_raw',
-                self.rgb_callback,
-                10)
-            self.guards
-
-            self.depth_subscription = MultiPersonTracker.create_subscription(
-                Image,
-                '/' + namespace+'/aligned_depth_to_color/image_raw',
-                self.depth_callback,
-                10)
-            self.guards
-
-        def rgb_callback(self, msg):
-            try:
-                self.rgb = self.bridge.imgmsg_to_cv2(
-                    msg, desired_encoding='passthrough')
-                cudaimage = cv2.cvtColor(self.rgb, cv2.COLOR_BGRA2RGBA).astype(
-                    np.float32)  # converting the image to a cuda compatible image
-                self.cudaimage = jetson_utils.cudaFromNumpy(cudaimage)
-                self.timestamp = self.get_clock().now().nanoseconds
-                # detect when new rgb immage is available
-                MultiPersonTracker.people_tracker.PeopleDetector.detect(
-                    self.cudaimage, self.depth, self.timestamp)
-            except:
-                pass
-
-        def depth_callback(self, msg):
-            try:
-                depth = self.bridge.imgmsg_to_cv2(
-                    msg, desired_encoding='passthrough')
-                self.depth = np.array(depth, dtype=np.float32)*0.001
-                # TODO Check do we actually want to update the timestamp
-                self.timestamp = self.get_clock().now().nanoseconds
-            except:
-                pass
 
 
 def main(args=None):
