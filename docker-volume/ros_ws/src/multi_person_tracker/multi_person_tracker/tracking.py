@@ -48,6 +48,7 @@ class KalmanFilter(object):
         self.measY = y
         self.measTheta = theta
         self.measTimestamp = timestamp
+        self.measWithTheta = True
 
         # Define sampling time
         self.dt = dt
@@ -76,6 +77,10 @@ class KalmanFilter(object):
         self.H = np.matrix([[1, 0, 0, 0, 0, 0],
                             [0, 1, 0, 0, 0, 0],
                             [0, 0, 1, 0, 0, 0]])
+        # Define Measurement Mapping Matrix without Theta
+        self.Halternative = np.matrix([[1, 0, 0, 0, 0, 0],
+                                       [0, 1, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0]])
 
         # Initial Measurement Noise Covariance
         self.R = np.matrix([[x_std_meas**2, 0, 0],
@@ -129,7 +134,10 @@ class KalmanFilter(object):
                             [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
 
     def update(self):
-
+        if self.measWithTheta:
+            H = self.H
+        else:
+            H = self.Halternative
         # print(f"before unwrap: {self.personTheta}, {self.x[2]}")
         self.personTheta = self.angleWrap(self.x[2], self.personTheta)
         # print(f"after unwrap: {self.personTheta}, {self.x[2]}")
@@ -141,19 +149,19 @@ class KalmanFilter(object):
 
         self.generateMatricies(dt)
 
-        S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
+        S = np.dot(H, np.dot(self.P, H.T)) + self.R
 
         # Calculate the Kalman Gain
-        K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+        K = np.dot(np.dot(self.P, H.T), np.linalg.inv(S))
         # print(f"Kalman gain:\n {K}")
 
-        # self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
-        self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
+        # self.x = np.round(self.x + np.dot(K, (z - np.dot(H, self.x))))
+        self.x = self.x + np.dot(K, (z - np.dot(H, self.x)))
 
-        I = np.eye(self.H.shape[1])
+        I = np.eye(H.shape[1])
 
         # Update error covariance matrix
-        self.P = (I - (K * self.H)) * self.P
+        self.P = (I - (K * H)) * self.P
 
         # wrap angle between -pi and pi
         self.x[2] = np.mod(self.x[2] + np.pi, 2 * np.pi) - np.pi
@@ -231,6 +239,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                if detections[index[1]].orientation == None:
+                    measWithTheta = False
+                else:
+                    measWithTheta = True
                 updates.append(index[0])
 
         elif len(tracklets) < len(detections):
@@ -241,6 +253,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                if detections[index[1]].orientation == None:
+                    measWithTheta = False
+                else:
+                    measWithTheta = True
                 detections.pop(index[1])
                 updates.append(index[0])
 
@@ -260,6 +276,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                if detections[index[1]].orientation == None:
+                    measWithTheta = False
+                else:
+                    measWithTheta = True
                 updates.append(index[0])
 
         return updates
@@ -278,7 +298,7 @@ class PeopleTracker(object):
         for person in self.personList:
             person.predict()
 
-    def update(self, detections, timestamp):
+    def update(self, detections, timestamp, withTheta: bool = True):
         # update the tracklets with new detections
         if len(self.personList):
             # remove person if it hasn't been detected in too long
