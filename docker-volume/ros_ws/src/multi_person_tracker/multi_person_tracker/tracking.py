@@ -18,6 +18,7 @@ class KalmanFilter(object):
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
+            decay = 0.8,
             debug=False):
         """
         :param x: initial x measurement
@@ -43,6 +44,7 @@ class KalmanFilter(object):
         self.personYdot = 0
         self.personThetadot = 0
         self.timestamp = timestamp
+        self.decay = decay
 
         self.measX = x
         self.measY = y
@@ -90,6 +92,15 @@ class KalmanFilter(object):
         # Initial Covariance Matrix
         self.P = np.eye(self.A.shape[1])
 
+
+        # matrix for decay the influence of prediction on movement over time when no detection
+        self.DecayMatrix = np.matrix([[1, 0, 0, 0.0, 0, 0],
+                            [0, 1, 0, 0, 0.0, 0],
+                            [0, 0, 1, 0, 0, 0.0],
+                            [0, 0, 0, self.decay, 0, 0],
+                            [0, 0, 0, 0, self.decay, 0],
+                            [0, 0, 0, 0, 0, self.decay]])
+
     def angleWrap(self, old_angle, new_angle):
         # function for wrapping angle around if input angle crosses boundary
         r = 0
@@ -104,7 +115,10 @@ class KalmanFilter(object):
 
     def predict(self):
         # Update time state
-        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
+        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u) 
+
+        # TODO determine use of Decay velocity measurement
+        # self.x = np.dot(self.DecayMatrix, self.x)
 
         # Calculate error covariance
         self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
@@ -239,10 +253,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None:
-                    measWithTheta = False
+                if detections[index[1]].orientation == None: # Determining update of orientation
+                    tracklets[index[0]].measWithTheta = False 
                 else:
-                    measWithTheta = True
+                    tracklets[index[0]].measWithTheta = True
                 updates.append(index[0])
 
         elif len(tracklets) < len(detections):
@@ -253,10 +267,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None:
-                    measWithTheta = False
+                if detections[index[1]].orientation == None: # Determining update of orientation
+                    tracklets[index[0]].measWithTheta = False
                 else:
-                    measWithTheta = True
+                    tracklets[index[0]].measWithTheta = True
                 detections.pop(index[1])
                 updates.append(index[0])
 
@@ -276,10 +290,10 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None:
-                    measWithTheta = False
+                if detections[index[1]].orientation == None: # Determining update of orientation
+                    tracklets[index[0]].measWithTheta = False
                 else:
-                    measWithTheta = True
+                    tracklets[index[0]].measWithTheta = True
                 updates.append(index[0])
 
         return updates
@@ -298,7 +312,7 @@ class PeopleTracker(object):
         for person in self.personList:
             person.predict()
 
-    def update(self, detections, timestamp, withTheta: bool = True):
+    def update(self, detections, timestamp):
         # update the tracklets with new detections
         if len(self.personList):
             # remove person if it hasn't been detected in too long
