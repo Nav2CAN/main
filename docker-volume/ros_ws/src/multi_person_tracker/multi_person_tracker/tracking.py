@@ -8,8 +8,8 @@ class KalmanFilter(object):
             self,
             x,
             y,
-            theta,
-            timestamp,
+            theta=0,
+            timestamp=0,
             dt=0.1,
             u_x=0,
             u_y=0,
@@ -178,7 +178,7 @@ class KalmanFilter(object):
 
 class MunkresAssignment(object):
     def __init__(self,
-                 detection_dist=5000,
+                 detection_dist=5,
                  gain=0.5,
                  debug=False):
         """

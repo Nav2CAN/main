@@ -34,13 +34,16 @@ class MultiPersonTracker(Node):
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
         The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
+        :param debug: display debug messages in the console
+        :param publishPoseMsg: publish marker arrows to the ROS2 network 
+        :param dt: rate of prediction for the trackers
+        :param n_cameras: number of publishing cameras on the ROS2 network
+        :param keeptime: seconds to keep tracklets after last detection
         '''
-        # TODO expand Brief
+
         super().__init__('multi_person_tracker')
         self.create_timer(dt, self.timer_callback)
         self.people_tracker = PeopleTracker(debug=False, keeptime=keeptime)
-        self.people_detector = self.PeopleDetector(
-            self, n_cameras=n_cameras, debug=debug)
         self.people_publisher = self.create_publisher(People, 'people', 10)
         self.people_arrow_publisher = self.create_publisher(
             MarkerArray, 'people_arrows', 10)
@@ -241,7 +244,8 @@ class MultiPersonTracker(Node):
                             kpPersons)
                         self.tracker.pose_detector.saveImage(self.cudaimage)
             except:
-                pass
+                if self.debug:
+                    print(f"Exception on rgb_callback")
 
         def depth_callback(self, msg):
             # get and update depth image
@@ -252,7 +256,8 @@ class MultiPersonTracker(Node):
                 # TODO Check do we actually want to update the timestamp
                 self.timestamp = self.tracker.get_clock().now().nanoseconds
             except:
-                pass
+                if self.debug:
+                    print(f"Exception on depth_callback")
 
         def generatePeople(self, poses):
             '''
@@ -266,7 +271,7 @@ class MultiPersonTracker(Node):
 
         def writing(self, personlist):
             '''
-            DC Function for writing csv file with person variables for captured images
+            Data collection function for writing csv file with person variables for captured images
             '''
             with open('SanityCheck.csv', mode='a') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',',
@@ -294,8 +299,7 @@ def main(args=None):
     rclpy.init(args=args)
 
   # Start ROS2 node
-    dt = 0.05
-    multi_person_tracker = MultiPersonTracker(dt)
+    multi_person_tracker = MultiPersonTracker(dt = 0.05)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
