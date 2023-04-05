@@ -92,7 +92,6 @@ class KalmanFilter(object):
         # Initial Covariance Matrix
         self.P = np.eye(self.A.shape[1])
 
-
         # matrix for decay the influence of prediction on movement over time when no detection
         self.DecayMatrix = np.matrix([[1, 0, 0, 0.0, 0, 0],
                             [0, 1, 0, 0, 0.0, 0],
@@ -100,6 +99,7 @@ class KalmanFilter(object):
                             [0, 0, 0, self.decay, 0, 0],
                             [0, 0, 0, 0, self.decay, 0],
                             [0, 0, 0, 0, 0, self.decay]])
+
 
     def angleWrap(self, old_angle, new_angle):
         # function for wrapping angle around if input angle crosses boundary
@@ -112,6 +112,24 @@ class KalmanFilter(object):
         out_angle = new_angle + r * 2 * math.pi
 
         return out_angle
+    
+
+    def generateMatricies(self, dt):
+
+        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
+                            [0, 1, 0, 0, self.dt, 0],
+                            [0, 0, 1, 0, 0, self.dt],
+                            [0, 0, 0, 1, 0, 0],
+                            [0, 0, 0, 0, 1, 0],
+                            [0, 0, 0, 0, 0, 1]])
+
+        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
+                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
+                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
+                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
+                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
+                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
+
 
     def predict(self):
         # Update time state
@@ -131,21 +149,6 @@ class KalmanFilter(object):
         self.personYdot = self.x[4]
         self.personThetadot = self.x[5]
 
-    def generateMatricies(self, dt):
-
-        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
-                            [0, 1, 0, 0, self.dt, 0],
-                            [0, 0, 1, 0, 0, self.dt],
-                            [0, 0, 0, 1, 0, 0],
-                            [0, 0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 0, 1]])
-
-        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
-                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
-                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
-                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
-                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
-                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
 
     def update(self):
         if self.measWithTheta:
