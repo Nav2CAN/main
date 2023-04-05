@@ -186,7 +186,8 @@ class MultiPersonTracker(Node):
 
     class Camera(object):
         def __init__(self, tracker_self, namespace: str = "camera", debug: bool = False):
-            print("init camera")
+            if self.debug:
+                print("init camera")
             self.rgb = None
             self.cudaimage = None
             self.depth = None
