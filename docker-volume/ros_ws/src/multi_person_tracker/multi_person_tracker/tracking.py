@@ -278,12 +278,21 @@ class MunkresAssignment(object):
                 updates.append(index[0])
 
             for detection in detections:
-                tracklets.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        timestamp))
+                # Check if orientation is found before appending
+                if detection.orientation == None:
+                    tracklets.append(
+                        KalmanFilter(
+                            detection.x,
+                            detection.y,
+                            detection.orientation, 
+                            timestamp))
+                else:
+                    tracklets.append(
+                        KalmanFilter(
+                            detection.x,
+                            detection.y,
+                            0.0, 
+                            timestamp))
 
         elif len(tracklets) > len(detections):
             if self.debug:
