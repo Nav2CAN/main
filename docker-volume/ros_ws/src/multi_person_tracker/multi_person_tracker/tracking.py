@@ -102,7 +102,7 @@ class KalmanFilter(object):
 
 
     def angleWrap(self, old_angle, new_angle):
-        # function for wrapping angle around if input angle crosses boundary
+        # function for unwrapping angle around if input angle crosses boundary
         r = 0
         if new_angle - old_angle < -math.pi:
             r = 1
@@ -114,7 +114,7 @@ class KalmanFilter(object):
         return out_angle
     
 
-    def generateMatricies(self, dt):
+    def generateMatricies(self, dt): # TODO Jonathan: not sure what your thought is with this function, Tristan
 
         self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
                             [0, 1, 0, 0, self.dt, 0],
@@ -250,7 +250,7 @@ class MunkresAssignment(object):
         updates = []
         if len(detections) == len(tracklets):
             if self.debug:
-                print("same length")
+                print("Same amount of detections and tracklets")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
@@ -264,7 +264,7 @@ class MunkresAssignment(object):
 
         elif len(tracklets) < len(detections):
             if self.debug:
-                print("More detections")
+                print("More detections than tracklets")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
@@ -287,7 +287,7 @@ class MunkresAssignment(object):
 
         elif len(tracklets) > len(detections):
             if self.debug:
-                print("More tracklets")
+                print("More tracklets than detections")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
