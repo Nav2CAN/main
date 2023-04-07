@@ -18,7 +18,7 @@ class KalmanFilter(object):
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
-            decay = 0.8,
+            decay=0.8,
             debug=False):
         """
         :param x: initial x measurement
@@ -63,9 +63,19 @@ class KalmanFilter(object):
                            self.personTheta], [self.personXdot], [self.personYdot], [self.personThetadot]])
 
         # Define the State Transition Matrix A
-        self.A, self.Q = None, None
+        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
+                            [0, 1, 0, 0, self.dt, 0],
+                            [0, 0, 1, 0, 0, self.dt],
+                            [0, 0, 0, 1, 0, 0],
+                            [0, 0, 0, 0, 1, 0],
+                            [0, 0, 0, 0, 0, 1]])
 
-        self.generateMatricies(dt)
+        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
+                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
+                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
+                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
+                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
+                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
 
         # Define the Control Input Matrix B
         self.B = np.matrix([[(self.dt**2) / 2, 0, 0],
@@ -94,12 +104,11 @@ class KalmanFilter(object):
 
         # matrix for decay the influence of prediction on movement over time when no detection
         self.DecayMatrix = np.matrix([[1, 0, 0, 0.0, 0, 0],
-                            [0, 1, 0, 0, 0.0, 0],
-                            [0, 0, 1, 0, 0, 0.0],
-                            [0, 0, 0, self.decay, 0, 0],
-                            [0, 0, 0, 0, self.decay, 0],
-                            [0, 0, 0, 0, 0, self.decay]])
-
+                                      [0, 1, 0, 0, 0.0, 0],
+                                      [0, 0, 1, 0, 0, 0.0],
+                                      [0, 0, 0, self.decay, 0, 0],
+                                      [0, 0, 0, 0, self.decay, 0],
+                                      [0, 0, 0, 0, 0, self.decay]])
 
     def angleWrap(self, old_angle, new_angle):
         # function for unwrapping angle around if input angle crosses boundary
@@ -112,28 +121,10 @@ class KalmanFilter(object):
         out_angle = new_angle + r * 2 * math.pi
 
         return out_angle
-    
-
-    def generateMatricies(self, dt): # TODO Jonathan: not sure what your thought is with this function, Tristan
-
-        self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
-                            [0, 1, 0, 0, self.dt, 0],
-                            [0, 0, 1, 0, 0, self.dt],
-                            [0, 0, 0, 1, 0, 0],
-                            [0, 0, 0, 0, 1, 0],
-                            [0, 0, 0, 0, 0, 1]])
-
-        self.Q = np.matrix([[(self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0, 0],
-                            [0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2, 0],
-                            [0, 0, (self.dt**4) / 4, 0, 0, (self.dt**3) / 2],
-                            [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
-                            [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
-                            [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
-
 
     def predict(self):
         # Update time state
-        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u) 
+        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
 
         # TODO determine use of Decay velocity measurement
         # self.x = np.dot(self.DecayMatrix, self.x)
@@ -149,7 +140,6 @@ class KalmanFilter(object):
         self.personYdot = self.x[4]
         self.personThetadot = self.x[5]
 
-
     def update(self):
         if self.measWithTheta:
             H = self.H
@@ -160,11 +150,6 @@ class KalmanFilter(object):
         # print(f"after unwrap: {self.personTheta}, {self.x[2]}")
 
         z = [[self.measX], [self.measY], [self.measTheta]]
-
-        # time difference and map from [ns] to [s]
-        dt = abs(self.measTimestamp-self.timestamp)*1e-9
-
-        self.generateMatricies(dt)
 
         S = np.dot(H, np.dot(self.P, H.T)) + self.R
 
@@ -256,8 +241,9 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None: # Determining update of orientation
-                    tracklets[index[0]].measWithTheta = False 
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
+                    tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
                 updates.append(index[0])
@@ -270,7 +256,8 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None: # Determining update of orientation
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
                     tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
@@ -284,14 +271,14 @@ class MunkresAssignment(object):
                         KalmanFilter(
                             detection.x,
                             detection.y,
-                            detection.orientation, 
+                            detection.orientation,
                             timestamp))
                 else:
                     tracklets.append(
                         KalmanFilter(
                             detection.x,
                             detection.y,
-                            0.0, 
+                            0.0,
                             timestamp))
 
         elif len(tracklets) > len(detections):
@@ -302,7 +289,8 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                if detections[index[1]].orientation == None: # Determining update of orientation
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
                     tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
