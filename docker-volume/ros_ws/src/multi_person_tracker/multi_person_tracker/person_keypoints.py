@@ -78,9 +78,10 @@ class person_keypoint:
 
         self.keypoints: List[keypoint] = []
         self.depth = depth
-        self.orientation: float = None
+        self.orientation: float = 0.0
         self.x: float = None
         self.y: float = None
+        self.withTheta: bool = True
         for kp in keypoints:
             self.keypoints.append(keypoint(kp.ID, kp.x, kp.y))
 
@@ -111,23 +112,24 @@ class person_keypoint:
         if (self.left_hip and self.right_hip):
             self.getOrientationFromPoints(self.left_hip, self.right_hip)
             return
-        if (self.left_ear and self.right_ear):
-            self.getOrientationFromPoints(self.left_ear, self.right_ear)
-            return
+        self.withTheta=False
 
     def getOrientationFromPoints(self, left: keypoint, right: keypoint):
         left.calculate3DKeypoint(self.depth)
         right.calculate3DKeypoint(self.depth)
-        self.orientation = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
+        if(left.x == np.nan or left.y == np.nan or right.x == np.nan or right.y == np.nan):
+            self.withTheta=False
+        else:
+            #arctan returns angle of shoulders therefore normal vector is offset by 90deg
+            self.orientation = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
 
-        # fix wrapping of angles
-        if self.orientation < -np.pi:
-            self.orientation += 2*np.pi
-        elif self.orientation > np.pi:
-            self.orientation -= 2*np.pi
+            # get angle back into the spectrum of -pi->pi
+            if self.orientation < -np.pi:
+                self.orientation += 2*np.pi
+            elif self.orientation > np.pi:
+                self.orientation -= 2*np.pi
 
-        if self.orientation < 0:
-            self.orientation += 2*np.pi
+
 
     def getPersonPosition(self):
         importantKeypoints = [self.neck, self.left_shoulder,

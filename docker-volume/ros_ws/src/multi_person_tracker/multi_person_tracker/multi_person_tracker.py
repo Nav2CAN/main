@@ -24,10 +24,11 @@ from .tracking import PeopleTracker
 
 
 class Detection:
-    def __init__(self, x: float, y: float, orientation: float):
+    def __init__(self, x: float, y: float, orientation: float, withTheta: bool=True):
         self.x = x
         self.y = y
         self.orientation = orientation
+        self.withTheta=withTheta
 
 
 class MultiPersonTracker(Node):
@@ -57,7 +58,7 @@ class MultiPersonTracker(Node):
         self.imageCount = -1
         self.written = False
         self.cameras = []
-
+        self.Orientations=[]
         # Setup variables for PoseNet
         self.network = "resnet18-body"
         self.overlay = "links,keypoints,boxes"
@@ -88,10 +89,10 @@ class MultiPersonTracker(Node):
             person = Person()
             person.position.x = float(p.personX)
             person.position.y = float(p.personY)
-            person.position.z = float(p.personTheta) if p.personTheta != None else float(0.0)
+            person.position.z = float(np.mod(p.personTheta + np.pi, 2 * np.pi) - np.pi)
             person.velocity.x = float(p.personXdot)
             person.velocity.y = float(p.personYdot)
-            person.velocity.z = float(p.personThetadot) if p.personTheta != None else float(0.0)
+            person.velocity.z = float(p.personThetadot)
             people.people.append(person)
 
         self.people_publisher.publish(people)
@@ -106,8 +107,9 @@ class MultiPersonTracker(Node):
         for i, person in enumerate(people):
             # Set the pose of the marker
             if (person.personX and person.personY and person.personTheta):
+                theta= np.mod(person.personTheta + np.pi, 2 * np.pi) - np.pi
                 quad = quaternion_from_euler(
-                    0, 0, (2*np.pi + person.personTheta if person.personTheta < 0 else person.personTheta))
+                    0, 0, (2*np.pi + theta if theta < 0 else theta))
                 marker = Marker()
                 # TODO change when we have tf goodness
                 marker.header.frame_id = "/camera1_link"
@@ -187,17 +189,17 @@ class MultiPersonTracker(Node):
         self.net.PrintProfilerTimes()
 
     class Camera(object):
-        def __init__(self, tracker_self, namespace: str = "camera", debug: bool = False):
-            self.debug = debug
-            if self.debug:
-                print("init camera")
+        def __init__(self, tracker_self, namespace: str = "camera"):
+
             self.rgb = None
             self.cudaimage = None
             self.depth = None
             self.bridge = CvBridge()
             self.timestamp = None
             self.tracker = tracker_self
-            
+            self.debug = self.tracker.debug 
+            if self.debug:
+                print("init camera")
 
             self.namespace = namespace
             self.tfFrame = self.namespace+"_link"
@@ -233,50 +235,55 @@ class MultiPersonTracker(Node):
                     self.cudaimage, self.depth)
 
                 # generate 3D coordinates for all keypoints and calculate x,y,theta
-                kpPersons = self.generatePeople(poses)
+                if poses:
+                    kpPersons = self.generatePeople(poses)
 
-                # make detection objects
-                detections = []
-                trans = self.tf_buffer.lookup_transform(
-                    self.tfFrame, self.tracker.target_frame, self.tracker.get_clock().now())
-                pose = Pose()
-                for person in kpPersons:
-                    if person.x !=None and person.y !=None:
-                        # transformation to target_frame
-                        pose.position.x = float(person.x)
-                        pose.position.y = float(person.y)
-                        pose.position.z = float(0.0)
-                        
-                        quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation if person.orientation!= None else 0.0))
-                        pose.orientation.x=quad[0]
-                        pose.orientation.y=quad[1]
-                        pose.orientation.z=quad[2]
-                        pose.orientation.w=quad[3]
-                        pose = tf2_geometry_msgs.do_transform_pose(
-                            pose, trans)
-                        quad =[pose.orientation.x,
-                            pose.orientation.y,
-                            pose.orientation.z,
-                            pose.orientation.w
-                            ]
+                    # make detection objects
+                    detections = []
+                    trans=None
+                    try:
+                        trans = self.tf_buffer.lookup_transform(self.tracker.target_frame, self.tfFrame, self.tracker.get_clock().now())
+                    except:
+                        None
+                    if trans:
+                        pose = Pose()
+                        for person in kpPersons:
+                            if person.x !=None and person.y !=None:
+                                # transformation to target_frame
+                                pose.position.x = float(person.x)
+                                pose.position.y = float(person.y)
+                                pose.position.z = float(0.0)
+                                quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation))
+                                pose.orientation.x=quad[0]
+                                pose.orientation.y=quad[1]
+                                pose.orientation.z=quad[2]
+                                pose.orientation.w=quad[3]
+                                pose = tf2_geometry_msgs.do_transform_pose(
+                                    pose, trans)
+                                quad =[pose.orientation.x,
+                                    pose.orientation.y,
+                                    pose.orientation.z,
+                                    pose.orientation.w
+                                    ]
 
-                        detections.append(
-                            Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2] if person.orientation != None else None))
+                                detections.append(
+                                    Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2], person.withTheta))
 
-                # Update tracker with new detections
-                if len(detections) != 0:
-                    self.tracker.people_tracker.update(
-                        detections, self.timestamp)
+                        # Update tracker with new detections
+                        if len(detections) != 0:
+                            self.tracker.people_tracker.update(
+                                detections, self.timestamp)
 
-                    # save image and make csv if required
-                    if self.debug:
-                        self.written = self.writing(kpPersons)
-                        self.tracker.pose_detector.peopleCount += len(
-                            kpPersons)
-                        self.tracker.pose_detector.saveImage(self.cudaimage)
-            except:
+                            # save image and make csv if required
+                            if self.debug:
+                                self.writing(kpPersons)
+                                self.tracker.peopleCount += len(
+                                    kpPersons)
+                                self.tracker.saveImage(self.cudaimage)
+            except Exception as e:
                 if self.debug:
                     print(f"Exception on rgb_callback")
+                    print(e)
 
         def depth_callback(self, msg):
             # get and update depth image
@@ -286,9 +293,10 @@ class MultiPersonTracker(Node):
                 self.depth = np.array(depth, dtype=np.float32)*0.001
                 # TODO Check do we actually want to update the timestamp
                 self.timestamp = self.tracker.get_clock().now().nanoseconds
-            except:
+            except Exception as e:
                 if self.debug:
                     print(f"Exception on depth_callback")
+                    print(e)
 
         def generatePeople(self, poses):
             '''
@@ -308,18 +316,18 @@ class MultiPersonTracker(Node):
                 writer = csv.writer(csvfile, delimiter=',',
                                     quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-                if not self.written:
+                if not self.tracker.written:
                     writer.writerow(['ImageID', 'Timestamp', 'PersonX', 'PersonY', 'Orientation',
                                     'left_shoulderX', 'left_shoulderY', 'left_shoulderZ',
                                      'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
-                    self.written = True
+                    self.tracker.written = True
                 for person in personlist:
                     left_shoulder = next(
                         (point for point in person.keypoints if point.ID == 5), None)
                     right_shoulder = next(
                         (point for point in person.keypoints if point.ID == 6), None)
                     if left_shoulder and right_shoulder:
-                        writer.writerow([str(self.imageCount), str(self.timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
+                        writer.writerow([str(self.tracker.imageCount), str(self.timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
                                         str(round(left_shoulder.x, 3)), str(
                                             round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
                                         str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
@@ -331,7 +339,7 @@ def main(args=None):
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02,debug=True, target_frame="camera1_link")
+        dt=0.02,debug=False, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()

@@ -9,6 +9,7 @@ class KalmanFilter(object):
             x,
             y,
             theta=0,
+            withTheta=True,
             timestamp=0,
             dt=0.1,
             u_x=0,
@@ -39,7 +40,7 @@ class KalmanFilter(object):
         # Define variables for sotring current position
         self.personX = x
         self.personY = y
-        self.personTheta = theta if theta !=None else 0
+        self.personTheta = theta
         self.personXdot = 0
         self.personYdot = 0
         self.personThetadot = 0
@@ -50,7 +51,8 @@ class KalmanFilter(object):
         self.measY = y
         self.measTheta = theta
         self.measTimestamp = timestamp
-        self.measWithTheta = True
+        self.measWithTheta = withTheta
+        self.residual=0
 
         # Define sampling time
         self.dt = dt
@@ -111,13 +113,13 @@ class KalmanFilter(object):
 
     def angleWrap(self, old_angle, new_angle):
         # function for unwrapping angle around if input angle crosses boundary
-        r = 0
+        
         if new_angle - old_angle < -math.pi:
-            r = 1
+            self.residual += 1
         elif new_angle - old_angle > math.pi:
-            r = -1
+            self.residual -= 1
 
-        out_angle = new_angle + r * 2 * math.pi
+        out_angle = new_angle + self.residual * 2 * math.pi
 
         return out_angle
 
@@ -126,7 +128,7 @@ class KalmanFilter(object):
         self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
 
         # TODO determine use of Decay velocity measurement
-        # self.x = np.dot(self.DecayMatrix, self.x)
+        self.x = np.dot(self.DecayMatrix, self.x)
 
         # Calculate error covariance
         self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
@@ -144,9 +146,9 @@ class KalmanFilter(object):
             H = self.H
         else:
             H = self.Halternative
-        # print(f"before unwrap: {self.personTheta}, {self.x[2]}")
-        self.personTheta = self.angleWrap(self.x[2], self.personTheta)
-        # print(f"after unwrap: {self.personTheta}, {self.x[2]}")
+        # print(f"before unwrap: {self.measTheta}, {self.x[2]}")
+        self.personTheta = self.angleWrap(self.x[2], self.measTheta)
+        # print(f"after unwrap: {self.measTheta}, {self.x[2]}")
 
         z = [[self.measX], [self.measY], [self.measTheta]]
 
@@ -163,9 +165,6 @@ class KalmanFilter(object):
 
         # Update error covariance matrix
         self.P = (I - (K * H)) * self.P
-
-        # wrap angle between -pi and pi
-        self.x[2] = np.mod(self.x[2] + np.pi, 2 * np.pi) - np.pi
 
         # Update position
         self.personX = self.x[0]
@@ -238,14 +237,10 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                
+                tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                # Determining update of orientation
-                if detections[index[1]].orientation == None:
-                    tracklets[index[0]].measWithTheta = False
-                else:
-                    tracklets[index[0]].measWithTheta = True
-                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
+                    
                 updates.append(index[0])
 
         elif len(tracklets) < len(detections):
@@ -254,33 +249,20 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                
+                tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                # Determining update of orientation
-                if detections[index[1]].orientation == None:
-                    tracklets[index[0]].measWithTheta = False
-                else:
-                    tracklets[index[0]].measWithTheta = True
-                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
                 detections.pop(index[1])
                 updates.append(index[0])
 
             for detection in detections:
-                # Check if orientation is found before appending
-                if detection.orientation == None:
-                    tracklets.append(
-                        KalmanFilter(
-                            detection.x,
-                            detection.y,
-                            detection.orientation,
-                            timestamp))
-                else:
-                    tracklets.append(
-                        KalmanFilter(
-                            detection.x,
-                            detection.y,
-                            0.0,
-                            timestamp))
+                tracklets.append(
+                    KalmanFilter(
+                        detection.x,
+                        detection.y,
+                        detection.orientation,
+                        withTheta=detection.withTheta,
+                        timestamp=timestamp))
 
         elif len(tracklets) > len(detections):
             if self.debug:
@@ -288,14 +270,9 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                
+                tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
-                # Determining update of orientation
-                if detections[index[1]].orientation == None:
-                    tracklets[index[0]].measWithTheta = False
-                else:
-                    tracklets[index[0]].measWithTheta = True
-                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
                 updates.append(index[0])
 
         return updates
@@ -318,9 +295,11 @@ class PeopleTracker(object):
         # update the tracklets with new detections
         if len(self.personList):
             # remove person if it hasn't been detected in too long
+            n_popped=0
             for i in range(len(self.personList)):
                 if abs(timestamp-self.personList[i].timestamp)*1e-9 > self.keeptime:
-                    self.personList.pop(i)
+                    self.personList.pop(i-n_popped)
+                    n_popped+=1
 
             updates = self.assignment.MunkresTrack(
                 detections, self.personList, timestamp)
@@ -335,4 +314,5 @@ class PeopleTracker(object):
                         detection.x,
                         detection.y,
                         detection.orientation,
-                        timestamp))
+                        withTheta=detection.withTheta,
+                        timestamp=timestamp))
