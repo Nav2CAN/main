@@ -72,7 +72,7 @@ class MultiPersonTracker(Node):
 
         # Initialize camera objects with propper namespacing
         if n_cameras > 1:
-            self.cameras = [self.tracker.Camera(self, namespace="camera"+str(i+1))
+            self.cameras = [self.Camera(self, namespace="camera"+str(i+1))
                             for i in range(n_cameras)]
         else:
             self.cameras = [self.Camera(self)]
@@ -188,6 +188,7 @@ class MultiPersonTracker(Node):
 
     class Camera(object):
         def __init__(self, tracker_self, namespace: str = "camera", debug: bool = False):
+            self.debug = debug
             if self.debug:
                 print("init camera")
             self.rgb = None
@@ -196,7 +197,7 @@ class MultiPersonTracker(Node):
             self.bridge = CvBridge()
             self.timestamp = None
             self.tracker = tracker_self
-            self.debug = debug
+            
 
             self.namespace = namespace
             self.tfFrame = self.namespace+"_link"
@@ -241,17 +242,24 @@ class MultiPersonTracker(Node):
                 pose = Pose()
                 for person in kpPersons:
                     # transformation to target_frame
-                    pose.position.x = person.x
-                    pose.position.y = person.y
-                    pose.position.z = 0
-                    quad = quaternion_from_euler(0, 0, person.orientation)
-                    pose.orientation = quad
-
+                    pose.position.x = float(person.x)
+                    pose.position.y = float(person.y)
+                    pose.position.z = float(0.0)
+                    quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation if person.orientation!= None else 0.0))
+                    pose.orientation.x=quad[0]
+                    pose.orientation.y=quad[1]
+                    pose.orientation.z=quad[2]
+                    pose.orientation.w=quad[3]
                     pose = tf2_geometry_msgs.do_transform_pose(
                         pose, trans)
+                    quad =[pose.orientation.x,
+                        pose.orientation.y,
+                        pose.orientation.z,
+                        pose.orientation.w
+                        ]
 
                     detections.append(
-                        Detection(pose.position.x, pose.position.y, euler_from_quaternion(pose.orientation)))
+                        Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2]))
 
                 # Update tracker with new detections
                 if len(detections) != 0:
@@ -321,7 +329,7 @@ def main(args=None):
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02, target_frame="camera1_link")
+        dt=0.02,debug=True, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()

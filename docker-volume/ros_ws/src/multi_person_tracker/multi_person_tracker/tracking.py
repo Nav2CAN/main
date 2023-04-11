@@ -59,8 +59,7 @@ class KalmanFilter(object):
         self.u = np.matrix([[u_x], [u_y], [u_theta]])
 
         # Intial State
-        self.x = np.matrix([[self.personX], [self.personY], [
-                           self.personTheta], [self.personXdot], [self.personYdot], [self.personThetadot]])
+        self.x = np.matrix([[self.personX], [self.personY], [self.personTheta], [self.personXdot], [self.personYdot], [self.personThetadot]])
 
         # Define the State Transition Matrix A
         self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
