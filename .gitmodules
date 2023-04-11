@@ -11,3 +11,6 @@
 [submodule "jetson-containers"]
 	path = jetson-containers
 	url = git@github.com:Tristan9497/jetson-containers.git
+[submodule "docker-volume/yolov7"]
+	path = docker-volume/yolov7
+	url = git@github.com:WongKinYiu/yolov7.git
