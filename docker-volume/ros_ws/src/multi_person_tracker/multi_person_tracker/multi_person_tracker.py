@@ -5,7 +5,9 @@ import threading
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
-from tf_transformations import quaternion_from_euler
+from tf_transformations import quaternion_from_euler, euler_from_quaternion
+import tf2_ros
+import tf2_geometry_msgs
 import jetson_utils
 from jetson_inference import poseNet
 from jetson_utils import videoOutput, logUsage
@@ -29,7 +31,7 @@ class Detection:
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1, n_cameras=2, keeptime=5):
+    def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1, n_cameras=2, keeptime=5, target_frame: str = "map"):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
@@ -49,7 +51,7 @@ class MultiPersonTracker(Node):
             MarkerArray, 'people_arrows', 10)
         self.publishPoseMsg = publishPoseMsg
         self.debug = debug
-
+        self.target_frame = target_frame
         ### Variables for pose detection###
         self.peopleCount = 0
         self.imageCount = -1
@@ -191,11 +193,16 @@ class MultiPersonTracker(Node):
             self.rgb = None
             self.cudaimage = None
             self.depth = None
-            self.namespace = namespace
             self.bridge = CvBridge()
             self.timestamp = None
             self.tracker = tracker_self
             self.debug = debug
+
+            self.namespace = namespace
+            self.tfFrame = self.namespace+"_link"
+            self.tf_buffer = tf2_ros.Buffer()
+            self.tf_listener = tf2_ros.TransformListener(
+                self.tf_buffer, self.tracker)
 
             # Initialize subscribers in tracker object for this camera
             self.rgb_subscription = self.tracker.create_subscription(
@@ -229,9 +236,22 @@ class MultiPersonTracker(Node):
 
                 # make detection objects
                 detections = []
+                trans = self.tf_buffer.lookup_transform(
+                    self.tfFrame, self.tracker.target_frame, self.tracker.get_clock().now())
+                pose = Pose()
                 for person in kpPersons:
+                    # transformation to target_frame
+                    pose.position.x = person.x
+                    pose.position.y = person.y
+                    pose.position.z = 0
+                    quad = quaternion_from_euler(0, 0, person.orientation)
+                    pose.orientation = quad
+
+                    pose = tf2_geometry_msgs.do_transform_pose(
+                        pose, trans)
+
                     detections.append(
-                        Detection(person.x, person.y, person.orientation))
+                        Detection(pose.position.x, pose.position.y, euler_from_quaternion(pose.orientation)))
 
                 # Update tracker with new detections
                 if len(detections) != 0:
@@ -300,7 +320,8 @@ def main(args=None):
     rclpy.init(args=args)
 
   # Start ROS2 node
-    multi_person_tracker = MultiPersonTracker(dt = 0.05)
+    multi_person_tracker = MultiPersonTracker(
+        dt=0.02, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
