@@ -8,8 +8,8 @@ class KalmanFilter(object):
             self,
             x,
             y,
-            theta,
-            timestamp,
+            theta=0,
+            timestamp=0,
             dt=0.1,
             u_x=0,
             u_y=0,
@@ -18,6 +18,7 @@ class KalmanFilter(object):
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
+            decay=0.8,
             debug=False):
         """
         :param x: initial x measurement
@@ -43,11 +44,13 @@ class KalmanFilter(object):
         self.personYdot = 0
         self.personThetadot = 0
         self.timestamp = timestamp
+        self.decay = decay
 
         self.measX = x
         self.measY = y
         self.measTheta = theta
         self.measTimestamp = timestamp
+        self.measWithTheta = True
 
         # Define sampling time
         self.dt = dt
@@ -60,60 +63,6 @@ class KalmanFilter(object):
                            self.personTheta], [self.personXdot], [self.personYdot], [self.personThetadot]])
 
         # Define the State Transition Matrix A
-        self.A, self.Q = None, None
-
-        self.generateMatricies(dt)
-
-        # Define the Control Input Matrix B
-        self.B = np.matrix([[(self.dt**2) / 2, 0, 0],
-                            [0, (self.dt**2) / 2, 0],
-                            [0, 0, (self.dt**2) / 2],
-                            [self.dt, 0, 0],
-                            [0, self.dt, 0],
-                            [0, 0, self.dt]])
-
-        # Define Measurement Mapping Matrix
-        self.H = np.matrix([[1, 0, 0, 0, 0, 0],
-                            [0, 1, 0, 0, 0, 0],
-                            [0, 0, 1, 0, 0, 0]])
-
-        # Initial Measurement Noise Covariance
-        self.R = np.matrix([[x_std_meas**2, 0, 0],
-                           [0, y_std_meas**2, 0],
-                           [0, 0, theta_std_meas**2]])
-
-        # Initial Covariance Matrix
-        self.P = np.eye(self.A.shape[1])
-
-    def angleWrap(self, old_angle, new_angle):
-        # function for wrapping angle around if input angle crosses boundary
-        r = 0
-        if new_angle - old_angle < -math.pi:
-            r = 1
-        elif new_angle - old_angle > math.pi:
-            r = -1
-
-        out_angle = new_angle + r * 2 * math.pi
-
-        return out_angle
-
-    def predict(self):
-        # Update time state
-        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
-
-        # Calculate error covariance
-        self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
-
-        # Update position
-        self.personX = self.x[0]
-        self.personY = self.x[1]
-        self.personTheta = self.x[2]
-        self.personXdot = self.x[3]
-        self.personYdot = self.x[4]
-        self.personThetadot = self.x[5]
-
-    def generateMatricies(self, dt):
-
         self.A = np.matrix([[1, 0, 0, self.dt, 0, 0],
                             [0, 1, 0, 0, self.dt, 0],
                             [0, 0, 1, 0, 0, self.dt],
@@ -128,32 +77,93 @@ class KalmanFilter(object):
                             [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
                             [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
 
-    def update(self):
+        # Define the Control Input Matrix B
+        self.B = np.matrix([[(self.dt**2) / 2, 0, 0],
+                            [0, (self.dt**2) / 2, 0],
+                            [0, 0, (self.dt**2) / 2],
+                            [self.dt, 0, 0],
+                            [0, self.dt, 0],
+                            [0, 0, self.dt]])
 
+        # Define Measurement Mapping Matrix
+        self.H = np.matrix([[1, 0, 0, 0, 0, 0],
+                            [0, 1, 0, 0, 0, 0],
+                            [0, 0, 1, 0, 0, 0]])
+        # Define Measurement Mapping Matrix without Theta
+        self.Halternative = np.matrix([[1, 0, 0, 0, 0, 0],
+                                       [0, 1, 0, 0, 0, 0],
+                                       [0, 0, 0, 0, 0, 0]])
+
+        # Initial Measurement Noise Covariance
+        self.R = np.matrix([[x_std_meas**2, 0, 0],
+                           [0, y_std_meas**2, 0],
+                           [0, 0, theta_std_meas**2]])
+
+        # Initial Covariance Matrix
+        self.P = np.eye(self.A.shape[1])
+
+        # matrix for decay the influence of prediction on movement over time when no detection
+        self.DecayMatrix = np.matrix([[1, 0, 0, 0.0, 0, 0],
+                                      [0, 1, 0, 0, 0.0, 0],
+                                      [0, 0, 1, 0, 0, 0.0],
+                                      [0, 0, 0, self.decay, 0, 0],
+                                      [0, 0, 0, 0, self.decay, 0],
+                                      [0, 0, 0, 0, 0, self.decay]])
+
+    def angleWrap(self, old_angle, new_angle):
+        # function for unwrapping angle around if input angle crosses boundary
+        r = 0
+        if new_angle - old_angle < -math.pi:
+            r = 1
+        elif new_angle - old_angle > math.pi:
+            r = -1
+
+        out_angle = new_angle + r * 2 * math.pi
+
+        return out_angle
+
+    def predict(self):
+        # Update time state
+        self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
+
+        # TODO determine use of Decay velocity measurement
+        # self.x = np.dot(self.DecayMatrix, self.x)
+
+        # Calculate error covariance
+        self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
+
+        # Update position
+        self.personX = self.x[0]
+        self.personY = self.x[1]
+        self.personTheta = self.x[2]
+        self.personXdot = self.x[3]
+        self.personYdot = self.x[4]
+        self.personThetadot = self.x[5]
+
+    def update(self):
+        if self.measWithTheta:
+            H = self.H
+        else:
+            H = self.Halternative
         # print(f"before unwrap: {self.personTheta}, {self.x[2]}")
         self.personTheta = self.angleWrap(self.x[2], self.personTheta)
         # print(f"after unwrap: {self.personTheta}, {self.x[2]}")
 
         z = [[self.measX], [self.measY], [self.measTheta]]
 
-        # time difference and map from [ns] to [s]
-        dt = abs(self.measTimestamp-self.timestamp)*1e-9
-
-        self.generateMatricies(dt)
-
-        S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
+        S = np.dot(H, np.dot(self.P, H.T)) + self.R
 
         # Calculate the Kalman Gain
-        K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+        K = np.dot(np.dot(self.P, H.T), np.linalg.inv(S))
         # print(f"Kalman gain:\n {K}")
 
-        # self.x = np.round(self.x + np.dot(K, (z - np.dot(self.H, self.x))))
-        self.x = self.x + np.dot(K, (z - np.dot(self.H, self.x)))
+        # self.x = np.round(self.x + np.dot(K, (z - np.dot(H, self.x))))
+        self.x = self.x + np.dot(K, (z - np.dot(H, self.x)))
 
-        I = np.eye(self.H.shape[1])
+        I = np.eye(H.shape[1])
 
         # Update error covariance matrix
-        self.P = (I - (K * self.H)) * self.P
+        self.P = (I - (K * H)) * self.P
 
         # wrap angle between -pi and pi
         self.x[2] = np.mod(self.x[2] + np.pi, 2 * np.pi) - np.pi
@@ -170,7 +180,7 @@ class KalmanFilter(object):
 
 class MunkresAssignment(object):
     def __init__(self,
-                 detection_dist=5000,
+                 detection_dist=5,
                  gain=0.5,
                  debug=False):
         """
@@ -225,41 +235,65 @@ class MunkresAssignment(object):
         updates = []
         if len(detections) == len(tracklets):
             if self.debug:
-                print("same length")
+                print("Same amount of detections and tracklets")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
+                    tracklets[index[0]].measWithTheta = False
+                else:
+                    tracklets[index[0]].measWithTheta = True
                 updates.append(index[0])
 
         elif len(tracklets) < len(detections):
             if self.debug:
-                print("More detections")
+                print("More detections than tracklets")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
+                    tracklets[index[0]].measWithTheta = False
+                else:
+                    tracklets[index[0]].measWithTheta = True
                 detections.pop(index[1])
                 updates.append(index[0])
 
             for detection in detections:
-                tracklets.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        timestamp))
+                # Check if orientation is found before appending
+                if detection.orientation == None:
+                    tracklets.append(
+                        KalmanFilter(
+                            detection.x,
+                            detection.y,
+                            detection.orientation,
+                            timestamp))
+                else:
+                    tracklets.append(
+                        KalmanFilter(
+                            detection.x,
+                            detection.y,
+                            0.0,
+                            timestamp))
 
         elif len(tracklets) > len(detections):
             if self.debug:
-                print("More tracklets")
+                print("More tracklets than detections")
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
+                # Determining update of orientation
+                if detections[index[1]].orientation == None:
+                    tracklets[index[0]].measWithTheta = False
+                else:
+                    tracklets[index[0]].measWithTheta = True
                 updates.append(index[0])
 
         return updates
