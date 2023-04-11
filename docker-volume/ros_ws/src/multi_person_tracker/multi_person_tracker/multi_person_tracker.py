@@ -88,10 +88,10 @@ class MultiPersonTracker(Node):
             person = Person()
             person.position.x = float(p.personX)
             person.position.y = float(p.personY)
-            person.position.z = float(p.personTheta)
+            person.position.z = float(p.personTheta) if p.personTheta != None else float(0.0)
             person.velocity.x = float(p.personXdot)
             person.velocity.y = float(p.personYdot)
-            person.velocity.z = float(p.personThetadot)
+            person.velocity.z = float(p.personThetadot) if p.personTheta != None else float(0.0)
             people.people.append(person)
 
         self.people_publisher.publish(people)
@@ -241,25 +241,27 @@ class MultiPersonTracker(Node):
                     self.tfFrame, self.tracker.target_frame, self.tracker.get_clock().now())
                 pose = Pose()
                 for person in kpPersons:
-                    # transformation to target_frame
-                    pose.position.x = float(person.x)
-                    pose.position.y = float(person.y)
-                    pose.position.z = float(0.0)
-                    quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation if person.orientation!= None else 0.0))
-                    pose.orientation.x=quad[0]
-                    pose.orientation.y=quad[1]
-                    pose.orientation.z=quad[2]
-                    pose.orientation.w=quad[3]
-                    pose = tf2_geometry_msgs.do_transform_pose(
-                        pose, trans)
-                    quad =[pose.orientation.x,
-                        pose.orientation.y,
-                        pose.orientation.z,
-                        pose.orientation.w
-                        ]
+                    if person.x !=None and person.y !=None:
+                        # transformation to target_frame
+                        pose.position.x = float(person.x)
+                        pose.position.y = float(person.y)
+                        pose.position.z = float(0.0)
+                        
+                        quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation if person.orientation!= None else 0.0))
+                        pose.orientation.x=quad[0]
+                        pose.orientation.y=quad[1]
+                        pose.orientation.z=quad[2]
+                        pose.orientation.w=quad[3]
+                        pose = tf2_geometry_msgs.do_transform_pose(
+                            pose, trans)
+                        quad =[pose.orientation.x,
+                            pose.orientation.y,
+                            pose.orientation.z,
+                            pose.orientation.w
+                            ]
 
-                    detections.append(
-                        Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2]))
+                        detections.append(
+                            Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2] if person.orientation != None else None))
 
                 # Update tracker with new detections
                 if len(detections) != 0:

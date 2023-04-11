@@ -141,9 +141,9 @@ class person_keypoint:
                     depth=self.depth, depthRadiusX=1, depthRadiusY=1)
                 kpx.append(kp.x)
                 kpy.append(kp.y)
-
-        self.x = np.nanmean(np.array(kpx))
-        self.y = np.nanmean(np.array(kpy))
+        if len(kpx)!=0 and len(kpy)!=0:
+            self.x = np.nanmean(np.array(kpx))
+            self.y = np.nanmean(np.array(kpy))
 
 
 class person_tracking:

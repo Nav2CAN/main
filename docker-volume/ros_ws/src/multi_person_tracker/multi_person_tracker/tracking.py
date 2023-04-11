@@ -39,13 +39,13 @@ class KalmanFilter(object):
         # Define variables for sotring current position
         self.personX = x
         self.personY = y
-        self.personTheta = theta
+        self.personTheta = theta if theta !=None else 0
         self.personXdot = 0
         self.personYdot = 0
         self.personThetadot = 0
         self.timestamp = timestamp
         self.decay = decay
-
+        self.initialized=False
         self.measX = x
         self.measY = y
         self.measTheta = theta
@@ -238,13 +238,14 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
+                
                 tracklets[index[0]].measTimestamp = timestamp
                 # Determining update of orientation
                 if detections[index[1]].orientation == None:
                     tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
                 updates.append(index[0])
 
         elif len(tracklets) < len(detections):
@@ -253,13 +254,14 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
+                
                 tracklets[index[0]].measTimestamp = timestamp
                 # Determining update of orientation
                 if detections[index[1]].orientation == None:
                     tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
                 detections.pop(index[1])
                 updates.append(index[0])
 
@@ -286,13 +288,14 @@ class MunkresAssignment(object):
             for index in indexes:
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
+                
                 tracklets[index[0]].measTimestamp = timestamp
                 # Determining update of orientation
                 if detections[index[1]].orientation == None:
                     tracklets[index[0]].measWithTheta = False
                 else:
                     tracklets[index[0]].measWithTheta = True
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
                 updates.append(index[0])
 
         return updates
