@@ -78,7 +78,7 @@ class person_keypoint:
 
         self.keypoints: List[keypoint] = []
         self.depth = depth
-        self.orientation: float = 0
+        self.orientation: float = None
         self.x: float = None
         self.y: float = None
         for kp in keypoints:

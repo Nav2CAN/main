@@ -1,4 +1,5 @@
 import rclpy
+import os
 from rclpy.node import Node
 import threading
 import numpy as np
@@ -29,21 +30,56 @@ class Detection:
 
 class MultiPersonTracker(Node):
     def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1, n_cameras=2, keeptime=5):
+        '''
+        Class for pose estimation of a person using Nvidia jetson Orin implementation
+        of PoseNet and passing messages using ROS2.
+        The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
+        :param debug: display debug messages in the console
+        :param publishPoseMsg: publish marker arrows to the ROS2 network 
+        :param dt: rate of prediction for the trackers
+        :param n_cameras: number of publishing cameras on the ROS2 network
+        :param keeptime: seconds to keep tracklets after last detection
+        '''
+
         super().__init__('multi_person_tracker')
         self.create_timer(dt, self.timer_callback)
         self.people_tracker = PeopleTracker(debug=False, keeptime=keeptime)
-        self.people_detector = self.PeopleDetector(
-            self, n_cameras=n_cameras, debug=debug)
         self.people_publisher = self.create_publisher(People, 'people', 10)
         self.people_arrow_publisher = self.create_publisher(
             MarkerArray, 'people_arrows', 10)
         self.publishPoseMsg = publishPoseMsg
         self.debug = debug
 
+        ### Variables for pose detection###
+        self.peopleCount = 0
+        self.imageCount = -1
+        self.written = False
+        self.cameras = []
+
+        # Setup variables for PoseNet
+        self.network = "resnet18-body"
+        self.overlay = "links,keypoints,boxes"
+        self.threshold = 0.3
+        self.output_location = "/docker-volume/images"  # only needed for saving images
+
+        # Initialising PoseNet and its output
+        self.net = poseNet(
+            self.network, [os.path.basename(__file__)], self.threshold)
+        self.output = videoOutput(self.output_location, argv=[
+            os.path.basename(__file__)])
+
+        # Initialize camera objects with propper namespacing
+        if n_cameras > 1:
+            self.cameras = [self.tracker.Camera(self, namespace="camera"+str(i+1))
+                            for i in range(n_cameras)]
+        else:
+            self.cameras = [self.Camera(self)]
+
     def timer_callback(self):
         # Publishes Tracker Ouput and predicts next state
         people = People()
         people.header.stamp = self.get_clock().now().to_msg()
+        # TODO change when we have tf goodness
         people.header.frame_id = "/camera1_link"
         # TODO implement index and reliabílity
         for p in self.people_tracker.personList:
@@ -71,6 +107,7 @@ class MultiPersonTracker(Node):
                 quad = quaternion_from_euler(
                     0, 0, (2*np.pi + person.personTheta if person.personTheta < 0 else person.personTheta))
                 marker = Marker()
+                # TODO change when we have tf goodness
                 marker.header.frame_id = "/camera1_link"
                 marker.header.stamp = self.get_clock().now().to_msg()
                 marker.type = 0
@@ -128,64 +165,29 @@ class MultiPersonTracker(Node):
     #                 marker_array_msg.markers.append(marker)
     #     self.publisher_.publish(marker_array_msg)
 
-    class PeopleDetector(object):
+    def detect(self, cudaImage, depthImage):
         '''
-        Class for pose estimation of a person using Nvidia jetson Orin implementation
-        of PoseNet and passing messages using ROS2.
-        The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
+        Perform pose estimation (with overlay)
         '''
+        if (cudaImage != None) and isinstance(depthImage, np.ndarray):
+            poses = self.net.Process(
+                cudaImage, overlay=self.overlay)
+            return poses
+        else:
+            return None
 
-        def __init__(self, tracker_self, n_cameras: int = 2, debug: bool = True):
-            print("init detector")
-            # DC For data collection
-            self.peopleCount = 0
-            self.imageCount = -1
-            self.written = False
-            self.debug = debug
-            self.cameras = []
-            self.tracker = tracker_self
-
-            # Setup variables for PoseNet
-            self.network = "resnet18-body"
-            self.overlay = "links,keypoints,boxes"
-            self.threshold = 0.3
-            self.output_location = "/docker-volume/images"  # only needed for saving images
-
-            # Initialising PoseNet and its output
-            self.net = poseNet(
-                self.network, ['multi_person_tracker.py'], self.threshold)
-            self.output = videoOutput(self.output_location, argv=[
-                'multi_person_tracker.py'])
-
-            # Initialize camera objects with propper namespacing
-            if n_cameras > 1:
-                self.cameras = [self.tracker.Camera(tracker_self, namespace="camera"+str(i+1))
-                                for i in range(n_cameras)]
-            else:
-                self.cameras = [self.Camera(tracker_self)]
-
-        def detect(self, cudaImage, depthImage):
-            '''
-            Perform pose estimation (with overlay)
-            '''
-            if (cudaImage != None) and isinstance(depthImage, np.ndarray):
-                poses = self.net.Process(
-                    cudaImage, overlay=self.overlay)
-                return poses
-            else:
-                return None
-
-        def saveImage(self, cudaImage):
-            # render an image of the camera with a pose overlay
-            self.imageCount += 1
-            self.output.Render(cudaImage)
-            self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
-                self.network, self.net.GetNetworkFPS()))
-            self.net.PrintProfilerTimes()
+    def saveImage(self, cudaImage):
+        # render an image of the camera with a pose overlay
+        self.imageCount += 1
+        self.output.Render(cudaImage)
+        self.output.SetStatus("{:s} | Network {:.0f} FPS".format(
+            self.network, self.net.GetNetworkFPS()))
+        self.net.PrintProfilerTimes()
 
     class Camera(object):
         def __init__(self, tracker_self, namespace: str = "camera", debug: bool = False):
-            print("init camera")
+            if self.debug:
+                print("init camera")
             self.rgb = None
             self.cudaimage = None
             self.depth = None
@@ -219,7 +221,7 @@ class MultiPersonTracker(Node):
                 self.timestamp = self.tracker.get_clock().now().nanoseconds
 
                 # detect poses when new rgb immage is available
-                poses = self.tracker.people_detector.detect(
+                poses = self.tracker.detect(
                     self.cudaimage, self.depth)
 
                 # generate 3D coordinates for all keypoints and calculate x,y,theta
@@ -243,7 +245,8 @@ class MultiPersonTracker(Node):
                             kpPersons)
                         self.tracker.pose_detector.saveImage(self.cudaimage)
             except:
-                pass
+                if self.debug:
+                    print(f"Exception on rgb_callback")
 
         def depth_callback(self, msg):
             # get and update depth image
@@ -254,7 +257,8 @@ class MultiPersonTracker(Node):
                 # TODO Check do we actually want to update the timestamp
                 self.timestamp = self.tracker.get_clock().now().nanoseconds
             except:
-                pass
+                if self.debug:
+                    print(f"Exception on depth_callback")
 
         def generatePeople(self, poses):
             '''
@@ -268,7 +272,7 @@ class MultiPersonTracker(Node):
 
         def writing(self, personlist):
             '''
-            DC Function for writing csv file with person variables for captured images
+            Data collection function for writing csv file with person variables for captured images
             '''
             with open('SanityCheck.csv', mode='a') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',',
@@ -296,8 +300,7 @@ def main(args=None):
     rclpy.init(args=args)
 
   # Start ROS2 node
-    dt = 0.05
-    multi_person_tracker = MultiPersonTracker(dt)
+    multi_person_tracker = MultiPersonTracker(dt = 0.05)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
