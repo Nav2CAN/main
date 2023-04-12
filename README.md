@@ -59,9 +59,11 @@ git clone --recursive -j8 git@github.com:Tristan9497/master-thesis.git
 ## Build 
 Build the two images for the individual Docker containers using (takes hours):
 ```
-cd /mnt/SDcard/master-thesis
+cd /mnt/SDcard/master-thesis/jetson-containers
 
-./jetson-containers/scripts/docker_build_ros.sh --distro humble --package ros_base --with-pytorch
+./scripts/docker_build_ros.sh --distro humble --package ros_base --with-pytorch
+
+cd ..
 
 docker compose -f /realsense-ros2-docker/docker/docker-compose-nvidia.yml build
 ```
