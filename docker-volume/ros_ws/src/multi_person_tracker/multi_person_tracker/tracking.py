@@ -1,7 +1,7 @@
-import munkres
+# import munkres
 import math
 import numpy as np
-
+from scipy.optimize import linear_sum_assignment
 
 class KalmanFilter(object):
     def __init__(
@@ -178,9 +178,6 @@ class KalmanFilter(object):
 
 class MunkresAssignment(object):
     def __init__(self,
-                 detection_dist=5,
-                 gain=0.5,
-                 noise=5,
                  newTrack=10,
                  debug=False):
         """
@@ -196,11 +193,7 @@ class MunkresAssignment(object):
         """
 
         # used to disable assigning certain distances to tracklets
-        self.NotAllowedForMunkres = munkres.DISALLOWED
-        self.detection_dist = detection_dist
-        self.gain = gain
         self.debug = debug
-        self.noise = noise
         self.newTrack = newTrack
 
     def MunkresDistances(self, detections, tracks, timestamp):
@@ -210,31 +203,20 @@ class MunkresAssignment(object):
         for person in tracks:
             currentPosX = person.personX
             currentPosY = person.personY
-            currentPosTheta = person.personTheta
             dists = []
             for detection in detections:
                 newPosX = detection.x
                 newPosY = detection.y
-                newPosTheta = detection.orientation
-
-                dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + \
-                    self.gain * abs(newPosTheta -
-                                    currentPosTheta) / (2 * math.pi)
+                dist = np.hypot((newPosX - currentPosX) , (newPosY - currentPosY))
                 dists.append(dist)
-                #                     
-                # if dist <= self.detection_dist:
-                #     dists.append(dist)
-                # else:
-                #     dists.append(self.NotAllowedForMunkres)
             distances.append(dists)
-
-        distMat = np.array(dists)
+        distMat = np.array(distances)
         mins = distMat.min(axis=1)
 
         popCounter = 0
-        if mins[mins > self.noise]:
+        if mins[mins > self.newTrack]:
             for i, min in enumerate(mins):
-                if min > self.newTrack:
+                if min>self.newTrack:
                     tracks.append(
                         KalmanFilter(
                         detections[i - popCounter].x,
@@ -242,30 +224,21 @@ class MunkresAssignment(object):
                         detections[i - popCounter].orientation,
                         withTheta=detections[i - popCounter].withTheta,
                         timestamp=timestamp))
-                    detections[i - popCounter].pop()
-                    
-                    distMat = np.delete(distMat, i-popCounter, 1)
-                    popCounter += 1
 
-                else:
                     detections[i - popCounter].pop()
                     distMat = np.delete(distMat, i-popCounter, 1)
                     popCounter += 1
-
-
-        # Find shortest distances
-        m = munkres.Munkres()
-        self.indexes = m.compute(distMat)
-
+        #Find shortest distance
+        self.indexes = linear_sum_assignment(distMat)
         return self.indexes, detections
 
     def MunkresTrack(self, detections, tracklets, timestamp):
-        indexes = self.MunkresDistances(detections, tracklets, timestamp)
+        indexes, detections = self.MunkresDistances(detections, tracklets, timestamp)
         updates = []
         if len(detections) == len(tracklets):
             if self.debug:
                 print("Same amount of detections and tracklets")
-            for index in indexes:
+            for index in zip(indexes[0],indexes[1]):
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
@@ -277,7 +250,7 @@ class MunkresAssignment(object):
         elif len(tracklets) < len(detections):
             if self.debug:
                 print("More detections than tracklets")
-            for index in indexes:
+            for index in zip(indexes[0],indexes[1]):
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
@@ -298,7 +271,7 @@ class MunkresAssignment(object):
         elif len(tracklets) > len(detections):
             if self.debug:
                 print("More tracklets than detections")
-            for index in indexes:
+            for index in zip(indexes[0],indexes[1]):
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]].measTheta = detections[index[1]].orientation
@@ -328,7 +301,7 @@ class PeopleTracker(object):
             # remove person if it hasn't been detected in too long
             n_popped=0
             for i in range(len(self.personList)):
-                if abs(timestamp-self.personList[i].timestamp)*1e-9 > self.keeptime:
+                if abs(timestamp-self.personList[i-n_popped].timestamp)*1e-9 > self.keeptime:
                     self.personList.pop(i-n_popped)
                     n_popped+=1
 

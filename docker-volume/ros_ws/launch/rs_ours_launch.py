@@ -75,7 +75,7 @@ configurable_parameters = [{'name': 'camera_name',                  'default': '
                         #    {'name': 'spatial_filter.enable',        'default': 'true', 'description': "''"},
                         #    {'name': 'disparity_filter.enable',      'default': 'true', 'description': "''"},
                         #    {'name': 'temporal_filter.enable',       'default': 'true', 'description': "''"},
-                           {'name': 'hole_filling_filter.enable',   'default': 'true', 'description': "''"},
+                        #    {'name': 'hole_filling_filter.enable',   'default': 'true', 'description': "''"},
                         #    {'name': 'decimation_filter.enable',     'default': 'true', 'description': "''"}
                                                     ]
 

@@ -121,8 +121,11 @@ class person_keypoint:
             self.withTheta=False
         else:
             #arctan returns angle of shoulders therefore normal vector is offset by 90deg
-            self.orientation = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
-
+            temp = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
+            if temp!= np.nan:
+                self.orientation=temp
+            else:
+                self.orientation=0.0
             # get angle back into the spectrum of -pi->pi
             if self.orientation < -np.pi:
                 self.orientation += 2*np.pi
