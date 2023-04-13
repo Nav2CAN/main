@@ -73,7 +73,7 @@ After build update the image id of the rostorch container in the docker-compose.
 *To use the docker containers for this project the **docker-compose.yml** file contains the needed instructions and the containers can be run using:*
 ```
 cd /mnt/SDcard/master-thesis
-docker-compose up
+docker compose up
 ```
 
 #### Create a terminal in the rostorch container using:
@@ -108,3 +108,8 @@ The docker image needs to be pulled manually using e.g.:
   docker pull nvcr.io/nvidia/l4t-jetpack:r35.2.1 
 ```
 *this was happening when rebuilding the containers*
+in case of docker pull access denied on docker compose up
+
+ sudo systemctl daemon-reload
+
+ sudo systemctl restart docker
