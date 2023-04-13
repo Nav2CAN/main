@@ -228,7 +228,7 @@ class MunkresAssignment(object):
                 #     dists.append(self.NotAllowedForMunkres)
             distances.append(dists)
 
-        distMat = np.array(dists)
+        distMat = np.array(distances)
         mins = distMat.min(axis=1)
 
         popCounter = 0
