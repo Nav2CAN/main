@@ -242,15 +242,10 @@ class MunkresAssignment(object):
                         detections[i - popCounter].orientation,
                         withTheta=detections[i - popCounter].withTheta,
                         timestamp=timestamp))
-                    detections[i - popCounter].pop()
-                    
-                    distMat = np.delete(distMat, i-popCounter, 1)
-                    popCounter += 1
-
-                else:
-                    detections[i - popCounter].pop()
-                    distMat = np.delete(distMat, i-popCounter, 1)
-                    popCounter += 1
+                
+                detections[i - popCounter].pop()
+                distMat = np.delete(distMat, i-popCounter, 1)
+                popCounter += 1
 
 
         # Find shortest distances
@@ -260,7 +255,7 @@ class MunkresAssignment(object):
         return self.indexes, detections
 
     def MunkresTrack(self, detections, tracklets, timestamp):
-        indexes = self.MunkresDistances(detections, tracklets, timestamp)
+        indexes, detections = self.MunkresDistances(detections, tracklets, timestamp)
         updates = []
         if len(detections) == len(tracklets):
             if self.debug:
