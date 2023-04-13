@@ -180,6 +180,8 @@ class MunkresAssignment(object):
     def __init__(self,
                  detection_dist=5,
                  gain=0.5,
+                 noise=5,
+                 newTrack=10,
                  debug=False):
         """
         :param centers: list of detected x, y and theta
@@ -198,10 +200,12 @@ class MunkresAssignment(object):
         self.detection_dist = detection_dist
         self.gain = gain
         self.debug = debug
+        self.noise = noise
+        self.newTrack = newTrack
 
-    def MunkresDistances(self, detections, tracks):
+    def MunkresDistances(self, detections, tracks, timestamp):
         # Calculate distances between objects and detections and save shortest
-        # distances
+        # distances while removing noise measurements
         distances = []
         for person in tracks:
             currentPosX = person.personX
@@ -216,20 +220,47 @@ class MunkresAssignment(object):
                 dist = abs(newPosX - currentPosX) + abs(newPosY - currentPosY) + \
                     self.gain * abs(newPosTheta -
                                     currentPosTheta) / (2 * math.pi)
-                if dist <= self.detection_dist:
-                    dists.append(dist)
-                else:
-                    dists.append(self.NotAllowedForMunkres)
+                dists.append(dist)
+                #                     
+                # if dist <= self.detection_dist:
+                #     dists.append(dist)
+                # else:
+                #     dists.append(self.NotAllowedForMunkres)
             distances.append(dists)
+
+        distMat = np.array(dists)
+        mins = distMat.min(axis=1)
+
+        popCounter = 0
+        if mins[mins > self.noise]:
+            for i, min in enumerate(mins):
+                if min > self.newTrack:
+                    tracks.append(
+                        KalmanFilter(
+                        detections[i - popCounter].x,
+                        detections[i - popCounter].y,
+                        detections[i - popCounter].orientation,
+                        withTheta=detections[i - popCounter].withTheta,
+                        timestamp=timestamp))
+                    detections[i - popCounter].pop()
+                    
+                    distMat = np.delete(distMat, i-popCounter, 1)
+                    popCounter += 1
+
+                else:
+                    detections[i - popCounter].pop()
+                    distMat = np.delete(distMat, i-popCounter, 1)
+                    popCounter += 1
+
 
         # Find shortest distances
         m = munkres.Munkres()
-        self.indexes = m.compute(distances)
+        self.indexes = m.compute(distMat)
 
-        return self.indexes
+        return self.indexes, detections
 
     def MunkresTrack(self, detections, tracklets, timestamp):
-        indexes = self.MunkresDistances(detections, tracklets)
+        indexes = self.MunkresDistances(detections, tracklets, timestamp)
         updates = []
         if len(detections) == len(tracklets):
             if self.debug:
