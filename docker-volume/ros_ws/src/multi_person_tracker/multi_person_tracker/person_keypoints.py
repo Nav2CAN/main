@@ -35,12 +35,12 @@ class keypoint():
         Id = (resolutionX/2)/np.tan(HFOV/2)
         # Length of the hypothenuse going towards the bb on the y=centrey plane
         Idx = np.sqrt((Id**2) + (centreX**2))
-
+        # TODO check if arctan is better than arctan2
         # angle between Idx and the line going from the camera to the centre of the bb
-        delta = np.arctan2(centreY, Idx)
+        delta = np.arctan(centreY/Idx)
 
         # Angle between idx and ID
-        gamma = np.arctan2(centreX, Id)
+        gamma = np.arctan(centreX/Id)
 
         # get distances of depth image assuming same resolution and allignment relative to bounding box coordinates
         distBox = depth[int(max(self.yImage - depthRadiusY, 0)):
@@ -54,6 +54,7 @@ class keypoint():
 
         distance = np.nanmedian(distBox)
 
+        self.z = np.sin(delta) * distance
         # Projection to horizontal plane happening here
         distance = distance * np.cos(delta)
         # Output in polar coordinates such that angles to the left are positive and angles to the right are negative
@@ -61,7 +62,6 @@ class keypoint():
         # return x andy according to REP
         self.y = np.sin(gamma) * distance
         self.x = np.cos(gamma) * distance
-        self.z = np.sin(delta) * distance
 
 
 class person_keypoint:
@@ -112,27 +112,25 @@ class person_keypoint:
         if (self.left_hip and self.right_hip):
             self.getOrientationFromPoints(self.left_hip, self.right_hip)
             return
-        self.withTheta=False
+        self.withTheta = False
 
     def getOrientationFromPoints(self, left: keypoint, right: keypoint):
         left.calculate3DKeypoint(self.depth)
         right.calculate3DKeypoint(self.depth)
-        if(left.x == np.nan or left.y == np.nan or right.x == np.nan or right.y == np.nan):
-            self.withTheta=False
+        if (left.x == np.nan or left.y == np.nan or right.x == np.nan or right.y == np.nan):
+            self.withTheta = False
         else:
-            #arctan returns angle of shoulders therefore normal vector is offset by 90deg
+            # arctan returns angle of shoulders therefore normal vector is offset by 90deg
             temp = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
-            if temp!= np.nan:
-                self.orientation=temp
+            if temp != np.nan:
+                self.orientation = temp
             else:
-                self.orientation=0.0
+                self.orientation = 0.0
             # get angle back into the spectrum of -pi->pi
             if self.orientation < -np.pi:
                 self.orientation += 2*np.pi
             elif self.orientation > np.pi:
                 self.orientation -= 2*np.pi
-
-
 
     def getPersonPosition(self):
         importantKeypoints = [self.neck, self.left_shoulder,
@@ -146,7 +144,7 @@ class person_keypoint:
                     depth=self.depth, depthRadiusX=1, depthRadiusY=1)
                 kpx.append(kp.x)
                 kpy.append(kp.y)
-        if len(kpx)!=0 and len(kpy)!=0:
+        if len(kpx) != 0 and len(kpy) != 0:
             self.x = np.nanmean(np.array(kpx))
             self.y = np.nanmean(np.array(kpy))
 
