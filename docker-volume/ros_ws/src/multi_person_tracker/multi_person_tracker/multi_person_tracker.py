@@ -220,7 +220,7 @@ class MultiPersonTracker(Node):
                 10)
 
         def rgb_callback(self, msg):
-            # try:
+            try:
                 # conversions
                 self.rgb = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
@@ -274,7 +274,7 @@ class MultiPersonTracker(Node):
                                     Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                                 self.writing(angle)
                         # Update tracker with new detections
-                        if len(detections) > 0:
+                        if len(detections):
                             self.tracker.people_tracker.update(
                                 detections, self.timestamp)
 
@@ -284,10 +284,10 @@ class MultiPersonTracker(Node):
                                 self.tracker.peopleCount += len(
                                     kpPersons)
                                 self.tracker.saveImage(self.cudaimage)
-            # except Exception as e:
-            #     if self.debug:
-            #         print(f"Exception on rgb_callback")
-            #         print(e)
+            except Exception as e:
+                if self.debug:
+                    print(f"Exception on rgb_callback")
+                    print(e)
 
         def depth_callback(self, msg):
             # get and update depth image
