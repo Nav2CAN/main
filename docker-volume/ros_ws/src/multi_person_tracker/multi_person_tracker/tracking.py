@@ -119,18 +119,6 @@ class KalmanFilter(object):
                                       [0, 0, 0, 0, self.decay, 0],
                                       [0, 0, 0, 0, 0, self.decay/10]])
 
-    def angleUnWrap(self, old_angle, new_angle):
-        # function for unwrapping angle around if input angle crosses boundary
-
-        if new_angle - old_angle < -math.pi:
-            self.residual += 1
-        elif new_angle - old_angle > math.pi:
-            self.residual -= 1
-
-        out_angle = new_angle + self.residual * 2 * math.pi
-
-        return out_angle
-
     def predict(self):
         # Update time state
         self.x = np.dot(self.A, self.x) + np.dot(self.B, self.u)
@@ -153,9 +141,6 @@ class KalmanFilter(object):
         if self.measWithTheta:
             H = self.H
             R = self.R
-            # self.measTheta = self.angleUnWrap(self.x[2], self.measTheta)
-            print(
-                np.unwrap(np.array([float(self.x[2]), float(self.measTheta)])))
             self.measTheta = np.unwrap(
                 np.array([float(self.x[2]), float(self.measTheta)]))[1]
             z = [[self.measX], [self.measY], [self.measTheta]]
