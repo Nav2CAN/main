@@ -5,18 +5,17 @@ import threading
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
-from tf_transformations import quaternion_from_euler, euler_from_quaternion, quaternion_about_axis
+from tf_transformations import euler_from_quaternion, quaternion_about_axis
 import tf2_ros
 import tf2_geometry_msgs
 import jetson_utils
 from jetson_inference import poseNet
-from jetson_utils import videoOutput, logUsage
+from jetson_utils import videoOutput
 import csv  # DC remove later
 
 from sensor_msgs.msg import Image
-from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Pose, Quaternion
+from geometry_msgs.msg import Pose
 
 from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
@@ -325,16 +324,6 @@ class MultiPersonTracker(Node):
 
                 self.tracker.written = True
                 writer.writerow([str(round(orientation, 3))])
-    # def writingOutput(self, personlist):
-    #     with open('Output.csv', mode='a') as csvfile:
-    #         writer = csv.writer(csvfile, delimiter=',',
-    #                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
-
-    #         if not self.tracker.written:
-    #             writer.writerow(["orientation"])
-    #             self.tracker.written = True
-    #         for person in personlist:
-    #             writer.writerow([str(round(right_shoulder.z, 3))])
 
 
 def main(args=None):
@@ -343,7 +332,7 @@ def main(args=None):
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02, debug=True, target_frame="camera1_link")
+        dt=0.02, debug=False, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
