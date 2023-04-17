@@ -3,11 +3,12 @@ from scipy.optimize import linear_sum_assignment
 
 
 class Detection:
-    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True):
+    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True, keypoints: list= []):
         self.x = x
         self.y = y
         self.orientation = orientation
         self.withTheta = withTheta
+        self.keypoints = keypoints
 
 class KalmanFilter(object):
     """
@@ -48,6 +49,7 @@ class KalmanFilter(object):
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
             decay=0.90,
+            keypoints=[],
             debug=False):
 
 
@@ -69,6 +71,7 @@ class KalmanFilter(object):
         self.measTimestamp = timestamp
         self.measWithTheta = withTheta
         self.residual = 0
+        self.keypoints = keypoints
 
         # Define sampling time
         self.dt = dt
@@ -220,10 +223,17 @@ class PeopleTracker(object):
 
     def update(self, detections, timestamp):
         # update the tracklets with new detections
+        popCounter = 0
         updates = self.MunkresTrack(
             detections, self.tracklets, timestamp)
         for update in updates:
             self.tracklets[update].update()
+
+        # remove tracklet if it hasn't been updated in too long
+        for i in range(len(self.tracklets)):
+            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
+                self.tracklets.pop(i-popCounter)
+                popCounter += 1
 
     def MunkresDistances(self, detections, tracklets, timestamp):
         # Calculate distances between objects and detections and save shortest
@@ -255,8 +265,8 @@ class PeopleTracker(object):
                             detections[i - popCounter].orientation,
                             withTheta=detections[i - popCounter].withTheta,
                             timestamp=timestamp,
-                            dt=self.dt))
-
+                            dt=self.dt,
+                            keypoints=detections[i - popCounter].keypoints))
                     detections.pop(i - popCounter)
                     distMat = np.delete(distMat, i-popCounter, 0)
                     print(np.shape(distMat))
@@ -267,7 +277,6 @@ class PeopleTracker(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-        popCounter = 0
 
         if len(tracklets):
             indexes = self.MunkresDistances(
@@ -290,6 +299,8 @@ class PeopleTracker(object):
                     tracklets[index[0]].measTimestamp = timestamp
                     tracklets[index[0]
                             ].measWithTheta = detections[index[1]].withTheta
+                    tracklets[index[0]
+                            ].keypoints = detections[index[1]].keypoints
                     updates.append(index[0])
                     detections.pop(index[1])#pop every assigned detection
 
@@ -302,12 +313,9 @@ class PeopleTracker(object):
                     detection.orientation,
                     withTheta=detection.withTheta,
                     timestamp=timestamp,
-                    dt=self.dt))
+                    dt=self.dt,
+                    keypoints=detection.keypoints))
             
-        # remove tracklet if it hasn't been updated in too long
-        for i in range(len(tracklets)):
-            if abs(timestamp-tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
-                tracklets.pop(i-popCounter)
-                popCounter += 1
+
 
         return updates
