@@ -97,6 +97,11 @@ ros2 run multi_person_tracker multi_person_tracker
 # PoseNet
 As the roject uses PoseNet from the jetson-inference package, it is important that the network is downloaded before use. This can be done using the tool provided by Nvidia *jetson-inference/tools/download-models.sh* and downloading **Pose-ResNet18-Body**
 
+# stage_ros2 ws compile and install
+sudo apt-get install git cmake g++ libjpeg8-dev libpng-dev libglu1-mesa-dev libltdl-dev libfltk1.1-dev
+cd ros2_ws/
+colcon build --symlink-install --cmake-args -DOpenGL_GL_PREFERENCE=LEGACY
+colcon build --symlink-install --packages-select stage_ros2
 
 # Issues
 in case of docker error like:
