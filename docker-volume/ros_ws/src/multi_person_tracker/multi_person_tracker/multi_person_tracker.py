@@ -15,7 +15,7 @@ import csv  # DC remove later
 
 from sensor_msgs.msg import Image
 from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, PointStamped
 
 from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
@@ -24,18 +24,22 @@ from .tracking import PeopleTracker, Detection
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, publishPoseMsg: bool = True, dt = 0.1, n_cameras = 2, newTrack = 3, keeptime = 5, target_frame: str = "map", debug: bool = False):
+    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt = 0.1, n_cameras = 2, newTrack = 3, keeptime = 5, target_frame: str = "map", debug: bool = False):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
         The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
-        :param publishPoseMsg: publish marker arrows to the ROS2 network 
-        :param dt: rate of prediction for the trackers
-        :param n_cameras: number of publishing cameras on the ROS2 network
-        :param newTrack: meters distance at which detection is not assigned to tracklets and new ones are generated 
-        :param keeptime: seconds to keep tracklets after last detection
-        :param target_frame ouput tf_frame of the poses
-        :param debug: display debug messages in the console
+
+        Parameters
+        ----------
+        publishPoseMsg: publish filtered marker arrows to the ROS2 network 
+        publishKeypoints: publish non filtered keypoints as markers
+        dt: rate of prediction for the trackers
+        n_cameras: number of publishing cameras on the ROS2 network
+        newTrack: meters distance at which detection is not assigned to tracklets and new ones are generated 
+        keeptime: seconds to keep tracklets after last detection
+        target_frame ouput tf_frame of the poses
+        debug: display debug messages in the console
         '''
 
         super().__init__('multi_person_tracker')
@@ -44,7 +48,10 @@ class MultiPersonTracker(Node):
         self.people_publisher = self.create_publisher(People, 'people', 10)
         self.people_arrow_publisher = self.create_publisher(
             MarkerArray, 'people_arrows', 10)
+        self.people_keypoint_publisher = self.create_publisher(
+            MarkerArray, 'people_keypoints', 10)
         self.publishPoseMsg = publishPoseMsg
+        self.publishKeypointsMsg = publishKeypoints
         self.debug = debug
         self.target_frame = target_frame
         ### Variables for pose detection###
@@ -77,7 +84,7 @@ class MultiPersonTracker(Node):
         people = People()
         people.header.stamp = self.get_clock().now().to_msg()
         # TODO change when we have tf goodness
-        people.header.frame_id = "/camera1_link"
+        people.header.frame_id = self.target_frame
         # TODO implement index and reliabílity
         for p in self.people_tracker.tracklets:
             person = Person()
@@ -92,7 +99,8 @@ class MultiPersonTracker(Node):
         self.people_publisher.publish(people)
         if self.publishPoseMsg:
             self.publishPoseArrows(self.people_tracker.tracklets)
-
+        if self.publishKeypointsMsg:
+            self.publishKeypoints(self.people_tracker.tracklets)
         self.people_tracker.predict()
 
     def publishPoseArrows(self, people):
@@ -104,8 +112,7 @@ class MultiPersonTracker(Node):
             if (person.personX and person.personY and person.personTheta):
                 quad = quaternion_about_axis(person.personTheta, (0, 0, 1))
                 marker = Marker()
-                # TODO change when we have tf goodness
-                marker.header.frame_id = "/camera1_link"
+                marker.header.frame_id = self.target_frame
                 marker.header.stamp = self.get_clock().now().to_msg()
                 marker.type = 0
                 marker.id = i
@@ -129,38 +136,29 @@ class MultiPersonTracker(Node):
                 marker_array_msg.markers.append(marker)
         self.people_arrow_publisher.publish(marker_array_msg)
 
-    #########################################################################
-    # THIS MIGHT BE USEFULL FOR THE REPORT SOMETIME BUT FOR NOW NOT NECESSARY#
-    #########################################################################
-
-    # def publishKeypointsMarker(self, people):
-    #     marker_array_msg = MarkerArray()
-    #     for kpPersons in people:
-    #         for i, kpPerson in enumerate(kpPersons):
-    #             # Set the pose of the marker
-    #             if (kpPerson.x and kpPerson.y and kpPerson.orientation):
-    #                 quad = quaternion_from_euler(
-    #                     0, 0, (2*np.pi + kpPerson.orientation if kpPerson.orientation < 0 else kpPerson.orientation))
-    #                 marker = Marker()
-    #                 marker.header.frame_id = "/"+self.namespace+"_link"
-    #                 marker.header.stamp = self.get_clock().now().to_msg()
-    #                 marker.type = 8
-    #                 marker.id = i
-    #                 marker.scale.x = .05
-    #                 marker.scale.y = .05
-    #                 marker.scale.z = .05
-    #                 marker.color.r = 0.0
-    #                 marker.color.g = 1.0
-    #                 marker.color.b = 0.0
-    #                 marker.color.a = 1.0
-    #                 for kp in kpPerson.keypoints:
-    #                     point = Point()
-    #                     point.x = kp.x
-    #                     point.y = kp.y
-    #                     point.z = kp.z
-    #                     marker.points.append(point)
-    #                 marker_array_msg.markers.append(marker)
-    #     self.publisher_.publish(marker_array_msg)
+    def publishKeypoints(self, people):
+        # Set the scale of the marker
+        marker_array_msg = MarkerArray()
+        for i, person in enumerate(people):
+            # Set the pose of the marker
+            if (person.personX and person.personY and person.personTheta and len(person.keypoints)):
+                # Set the pose of the marker
+                marker = Marker()
+                marker.header.frame_id = self.target_frame
+                marker.header.stamp = self.get_clock().now().to_msg()
+                marker.type = 8
+                marker.id = i
+                marker.scale.x = .05
+                marker.scale.y = .05
+                marker.scale.z = .05
+                marker.color.r = 0.0
+                marker.color.g = 1.0
+                marker.color.b = 0.0
+                marker.color.a = 1.0
+                for kp in person.keypoints:
+                    marker.points.append(kp.point)
+                marker_array_msg.markers.append(marker)
+        self.people_keypoint_publisher.publish(marker_array_msg)
 
     def detect(self, cudaImage, depthImage):
         '''
@@ -214,7 +212,7 @@ class MultiPersonTracker(Node):
                 10)
 
         def rgb_callback(self, msg):
-            try:
+            # try:
                 # conversions
                 self.rgb = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
@@ -243,6 +241,16 @@ class MultiPersonTracker(Node):
                         pose = Pose()
                         for person in kpPersons:
                             if person.x != None and person.y != None:
+                                if self.tracker.publishKeypoints:
+                                    keypoints=[]
+                                    for kp in person.keypoints:
+                                        if kp.x and kp.y and kp.z:
+                                            point = PointStamped()
+                                            point.point.x = float(kp.x)
+                                            point.point.y = float(kp.y)
+                                            point.point.z = float(kp.z)
+                                            point = tf2_geometry_msgs.do_transform_point(point, trans)
+                                            keypoints.append(point)
                                 # transformation to target_frame
                                 pose.position.x = float(person.x)
                                 pose.position.y = float(person.y)
@@ -264,9 +272,12 @@ class MultiPersonTracker(Node):
                                 ]
                                 angle = euler_from_quaternion(quad)[2]
                                 angle = angle if angle > 0 else angle+2*np.pi
-                                detections.append(
-                                    Detection(pose.position.x, pose.position.y, angle, person.withTheta))
-                                self.writing(angle)
+                                if self.tracker.publishKeypoints:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
+                                else:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                         # Update tracker with new detections
                         if len(detections):
                             self.tracker.people_tracker.update(
@@ -278,10 +289,10 @@ class MultiPersonTracker(Node):
                                 self.tracker.peopleCount += len(
                                     kpPersons)
                                 self.tracker.saveImage(self.cudaimage)
-            except Exception as e:
-                if self.debug:
-                    print(f"Exception on rgb_callback")
-                    print(e)
+            # except Exception as e:
+            #     if self.debug:
+            #         print(f"Exception on rgb_callback")
+            #         print(e)
 
         def depth_callback(self, msg):
             # get and update depth image
@@ -324,10 +335,9 @@ class MultiPersonTracker(Node):
 def main(args=None):
 
     rclpy.init(args=args)
-
   # Start ROS2 node
-    multi_person_tracker = MultiPersonTracker(
-        dt=0.02, target_frame="camera1_link", debug=False)
+    multi_person_tracker = MultiPersonTracker(publishKeypoints=False,
+        dt=0.02, target_frame="camera1_link", debug=True)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
