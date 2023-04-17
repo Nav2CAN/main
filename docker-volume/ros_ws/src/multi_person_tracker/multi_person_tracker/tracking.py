@@ -17,11 +17,11 @@ class KalmanFilter(object):
             u_y=0,
             u_theta=0,
             std_acc=0.0001,
-            std_theta_acc=0.0001,
+            std_theta_acc=0.00001,
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
-            decay=0.8,
+            decay=0.90,
             debug=False):
         """
         :param x: initial x measurement
@@ -47,7 +47,7 @@ class KalmanFilter(object):
         self.personYdot = 0
         self.personThetadot = 0
         self.timestamp = timestamp
-        self.decay = decay
+        self.decay = decay*dt #so the decay is consistent over different dt's
         self.initialized = False
         self.measX = x
         self.measY = y
@@ -117,7 +117,7 @@ class KalmanFilter(object):
                                       [0, 0, 1, 0, 0, 0.0],
                                       [0, 0, 0, self.decay, 0, 0],
                                       [0, 0, 0, 0, self.decay, 0],
-                                      [0, 0, 0, 0, 0, self.decay/10]])
+                                      [0, 0, 0, 0, 0, self.decay]])
 
     def predict(self):
         # Update time state
@@ -176,10 +176,11 @@ class KalmanFilter(object):
 class MunkresAssignment(object):
     def __init__(self,
                  newTrack=10,
-                 debug=False):
+                 debug=False,
+                 dt=0.1):
         """
         :param centers: list of detected x, y and theta
-        :param current_tracks: list of dictionaries of current tracked people
+        :param current_tracklets: list of dictionaries of current tracked people
             - x: map location of person, x value
             - y: map location of person, y value
             - theta: orientation of person
@@ -193,11 +194,11 @@ class MunkresAssignment(object):
         self.debug = debug
         self.newTrack = newTrack
 
-    def MunkresDistances(self, detections, tracks, timestamp):
+    def MunkresDistances(self, detections, tracklets, timestamp):
         # Calculate distances between objects and detections and save shortest
         # distances while removing noise measurements
         distances = []
-        for person in tracks:
+        for person in tracklets:
             currentPosX = person.personX
             currentPosY = person.personY
             dists = []
@@ -206,96 +207,74 @@ class MunkresAssignment(object):
                 newPosY = detection.y
                 dist = float(np.hypot((newPosX - currentPosX),
                              (newPosY - currentPosY)))
-                print(f"dist{dist}")
                 dists.append(dist)
             distances.append(dists)
         distMat = np.array(distances)
-        print(f"shape of dist mat{np.shape(distMat)}")
-        mins = distMat.min(axis=1)
-
+        mins = distMat.min(axis=0)
+        #if detection is too far away dont pop it and create new KF for it
         popCounter = 0
-        if mins[mins > self.newTrack]:
+        if np.any(mins > self.newTrack):
             for i, min in enumerate(mins):
                 if min > self.newTrack:
-                    tracks.append(
+                    tracklets.append(
                         KalmanFilter(
                             detections[i - popCounter].x,
                             detections[i - popCounter].y,
                             detections[i - popCounter].orientation,
                             withTheta=detections[i - popCounter].withTheta,
-                            timestamp=timestamp))
+                            timestamp=timestamp,
+                            dt=self.dt))
 
-                    detections[i - popCounter].pop()
-                    distMat = np.delete(distMat, i-popCounter, 1)
+                    detections.pop(i - popCounter)
+                    distMat = np.delete(distMat, i-popCounter, 0)
+                    print(np.shape(distMat))
                     popCounter += 1
         # Find shortest distance
-
         self.indexes = linear_sum_assignment(distMat)
-        return self.indexes, detections
+        return self.indexes
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-        if len(detections):
-            indexes, detections = self.MunkresDistances(
-                detections, tracklets, timestamp)
-            if len(detections) == len(tracklets):
-                if self.debug:
-                    print("Same amount of detections and tracklets")
-                for index in zip(indexes[0], indexes[1]):
-                    tracklets[index[0]].measX = detections[index[1]].x
-                    tracklets[index[0]].measY = detections[index[1]].y
-                    tracklets[index[0]
-                              ].measTheta = detections[index[1]].orientation
-                    tracklets[index[0]].measTimestamp = timestamp
-                    tracklets[index[0]
-                              ].measWithTheta = detections[index[1]].withTheta
-
-                    updates.append(index[0])
-
-            elif len(tracklets) < len(detections):
-                if self.debug:
+        indexes = self.MunkresDistances(
+            detections, tracklets, timestamp)
+        if len(detections):#check again since we might have popped one
+            if self.debug:
+                if len(tracklets) < len(detections):
                     print("More detections than tracklets")
-                for index in zip(indexes[0], indexes[1]):
-                    tracklets[index[0]].measX = detections[index[1]].x
-                    tracklets[index[0]].measY = detections[index[1]].y
-                    tracklets[index[0]
-                              ].measTheta = detections[index[1]].orientation
-                    tracklets[index[0]].measTimestamp = timestamp
-                    tracklets[index[0]
-                              ].measWithTheta = detections[index[1]].withTheta
-                    detections.pop(index[1])
-                    updates.append(index[0])
+                if len(tracklets) > len(detections):
+                    print("More tracklets than detections")
+                if len(tracklets) == len(detections):
+                    print("Same amount of detections and tracklets")
 
-                for detection in detections:
+            for index in zip(indexes[0], indexes[1]):
+                tracklets[index[0]].measX = detections[index[1]].x
+                tracklets[index[0]].measY = detections[index[1]].y
+                tracklets[index[0]
+                            ].measTheta = detections[index[1]].orientation
+                tracklets[index[0]].measTimestamp = timestamp
+                tracklets[index[0]
+                            ].measWithTheta = detections[index[1]].withTheta
+                updates.append(index[0])
+                detections.pop(index[1])
+
+                for detection in detections: #if its less tracklets this still contains some otherwise empty
                     tracklets.append(
                         KalmanFilter(
                             detection.x,
                             detection.y,
                             detection.orientation,
                             withTheta=detection.withTheta,
-                            timestamp=timestamp))
-
-            elif len(tracklets) > len(detections):
-                if self.debug:
-                    print("More tracklets than detections")
-                for index in zip(indexes[0], indexes[1]):
-                    tracklets[index[0]].measX = detections[index[1]].x
-                    tracklets[index[0]].measY = detections[index[1]].y
-                    tracklets[index[0]
-                              ].measTheta = detections[index[1]].orientation
-                    tracklets[index[0]].measTimestamp = timestamp
-                    tracklets[index[0]
-                              ].measWithTheta = detections[index[1]].withTheta
-                    updates.append(index[0])
+                            timestamp=timestamp,
+                            dt=self.dt))
 
         return updates
 
 
 class PeopleTracker(object):
-    def __init__(self, debug=False, keeptime=5):
+    def __init__(self, debug=False, keeptime=5,dt=0.1):
         # initialise the tracker with an empty list of people
-
-        self.assignment = MunkresAssignment(debug=debug)
+        self.dt=dt
+        self.assignment = MunkresAssignment(newTrack=3,debug=debug,dt=self.dt)
         self.keeptime = keeptime
         self.personList = []
 
@@ -305,21 +284,20 @@ class PeopleTracker(object):
             person.predict()
 
     def update(self, detections, timestamp):
-        # update the tracklets with new detections
-        if len(self.personList):
-            # remove person if it hasn't been detected in too long
-            n_popped = 0
-            for i in range(len(self.personList)):
-                if abs(timestamp-self.personList[i-n_popped].timestamp)*1e-9 > self.keeptime:
-                    self.personList.pop(i-n_popped)
-                    n_popped += 1
 
+        # remove person if it hasn't been detected in too long
+        n_popped = 0
+        for i in range(len(self.personList)):
+            if abs(timestamp-self.personList[i-n_popped].timestamp)*1e-9 > self.keeptime:
+                self.personList.pop(i-n_popped)
+                n_popped += 1
+
+        # update the tracklets with new detections
+        if len(self.personList)>0:
             updates = self.assignment.MunkresTrack(
                 detections, self.personList, timestamp)
-
             for update in updates:
                 self.personList[update].update()
-
         else:
             for detection in detections:
                 self.personList.append(
@@ -328,4 +306,5 @@ class PeopleTracker(object):
                         detection.y,
                         detection.orientation,
                         withTheta=detection.withTheta,
-                        timestamp=timestamp))
+                        timestamp=timestamp,
+                        dt=self.dt))

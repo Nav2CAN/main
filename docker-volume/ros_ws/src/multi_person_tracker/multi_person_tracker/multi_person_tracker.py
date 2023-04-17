@@ -274,7 +274,7 @@ class MultiPersonTracker(Node):
                                     Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                                 self.writing(angle)
                         # Update tracker with new detections
-                        if len(detections) != 0:
+                        if len(detections):
                             self.tracker.people_tracker.update(
                                 detections, self.timestamp)
 
