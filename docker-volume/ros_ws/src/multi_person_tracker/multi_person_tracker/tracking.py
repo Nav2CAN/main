@@ -16,6 +16,7 @@ class KalmanFilter(object):
             u_y=0,
             u_theta=0,
             std_acc=0.0001,
+            std_theta_acc=0.0001,
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
@@ -77,7 +78,10 @@ class KalmanFilter(object):
                             [(self.dt**3) / 2, 0, 0, self.dt**2, 0, 0],
                             [0, (self.dt**3) / 2, 0, 0, self.dt**2, 0],
                             [0, 0, (self.dt**3) / 2, 0, 0, self.dt**2]]) * self.std_acc**2
-
+        self.Q[2,2]=((self.dt**4)/4)*std_theta_acc**2
+        self.Q[2,5]=((self.dt**3) / 2)*std_theta_acc**2
+        self.Q[5,2]=((self.dt**3) / 2)*std_theta_acc**2
+        self.Q[5,5]=(self.dt**2)*std_theta_acc**2
         # Define the Control Input Matrix B
         self.B = np.matrix([[(self.dt**2) / 2, 0, 0],
                             [0, (self.dt**2) / 2, 0],
@@ -92,13 +96,15 @@ class KalmanFilter(object):
                             [0, 0, 1, 0, 0, 0]])
         # Define Measurement Mapping Matrix without Theta
         self.Halternative = np.matrix([[1, 0, 0, 0, 0, 0],
-                                       [0, 1, 0, 0, 0, 0],
-                                       [0, 0, 0, 0, 0, 0]])
+                                       [0, 1, 0, 0, 0, 0]])
 
         # Initial Measurement Noise Covariance
         self.R = np.matrix([[x_std_meas**2, 0, 0],
                            [0, y_std_meas**2, 0],
                            [0, 0, theta_std_meas**2]])
+                # Initial Measurement Noise Covariance
+        self.Ralternative = np.matrix([[x_std_meas**2, 0],
+                           [0, y_std_meas**2]])
 
         # Initial Covariance Matrix
         self.P = np.eye(self.A.shape[1])
@@ -109,9 +115,9 @@ class KalmanFilter(object):
                                       [0, 0, 1, 0, 0, 0.0],
                                       [0, 0, 0, self.decay, 0, 0],
                                       [0, 0, 0, 0, self.decay, 0],
-                                      [0, 0, 0, 0, 0, self.decay]])
+                                      [0, 0, 0, 0, 0, self.decay/10]])
 
-    def angleWrap(self, old_angle, new_angle):
+    def angleUnWrap(self, old_angle, new_angle):
         # function for unwrapping angle around if input angle crosses boundary
         
         if new_angle - old_angle < -math.pi:
@@ -144,15 +150,18 @@ class KalmanFilter(object):
     def update(self):
         if self.measWithTheta:
             H = self.H
+            R = self.R
+            # self.measTheta = self.angleUnWrap(self.x[2], self.measTheta)
+            print(np.unwrap(np.array([float(self.x[2]), float(self.measTheta)])))
+            self.measTheta = np.unwrap(np.array([float(self.x[2]), float(self.measTheta)]))[1]
+            z = [[self.measX], [self.measY], [self.measTheta]]
         else:
             H = self.Halternative
-        # print(f"before unwrap: {self.measTheta}, {self.x[2]}")
-        self.personTheta = self.angleWrap(self.x[2], self.measTheta)
-        # print(f"after unwrap: {self.measTheta}, {self.x[2]}")
+            R = self.Ralternative
+            z = [[self.measX], [self.measY]]
 
-        z = [[self.measX], [self.measY], [self.measTheta]]
 
-        S = np.dot(H, np.dot(self.P, H.T)) + self.R
+        S = np.dot(H, np.dot(self.P, H.T)) + R
 
         # Calculate the Kalman Gain
         K = np.dot(np.dot(self.P, H.T), np.linalg.inv(S))
@@ -207,10 +216,12 @@ class MunkresAssignment(object):
             for detection in detections:
                 newPosX = detection.x
                 newPosY = detection.y
-                dist = np.hypot((newPosX - currentPosX) , (newPosY - currentPosY))
+                dist = float(np.hypot((newPosX - currentPosX) , (newPosY - currentPosY)))
+                print(f"dist{dist}")
                 dists.append(dist)
             distances.append(dists)
         distMat = np.array(distances)
+        print(f"shape of dist mat{np.shape(distMat)}")
         mins = distMat.min(axis=1)
 
         popCounter = 0
@@ -229,55 +240,57 @@ class MunkresAssignment(object):
                     distMat = np.delete(distMat, i-popCounter, 1)
                     popCounter += 1
         #Find shortest distance
+        
         self.indexes = linear_sum_assignment(distMat)
         return self.indexes, detections
 
     def MunkresTrack(self, detections, tracklets, timestamp):
-        indexes, detections = self.MunkresDistances(detections, tracklets, timestamp)
         updates = []
-        if len(detections) == len(tracklets):
-            if self.debug:
-                print("Same amount of detections and tracklets")
-            for index in zip(indexes[0],indexes[1]):
-                tracklets[index[0]].measX = detections[index[1]].x
-                tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
-                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
-                    
-                updates.append(index[0])
+        if len(detections):
+            indexes, detections = self.MunkresDistances(detections, tracklets, timestamp)
+            if len(detections) == len(tracklets):
+                if self.debug:
+                    print("Same amount of detections and tracklets")
+                for index in zip(indexes[0],indexes[1]):
+                    tracklets[index[0]].measX = detections[index[1]].x
+                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                    tracklets[index[0]].measTimestamp = timestamp
+                    tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
+                        
+                    updates.append(index[0])
 
-        elif len(tracklets) < len(detections):
-            if self.debug:
-                print("More detections than tracklets")
-            for index in zip(indexes[0],indexes[1]):
-                tracklets[index[0]].measX = detections[index[1]].x
-                tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
-                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
-                detections.pop(index[1])
-                updates.append(index[0])
+            elif len(tracklets) < len(detections):
+                if self.debug:
+                    print("More detections than tracklets")
+                for index in zip(indexes[0],indexes[1]):
+                    tracklets[index[0]].measX = detections[index[1]].x
+                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                    tracklets[index[0]].measTimestamp = timestamp
+                    tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
+                    detections.pop(index[1])
+                    updates.append(index[0])
 
-            for detection in detections:
-                tracklets.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        withTheta=detection.withTheta,
-                        timestamp=timestamp))
+                for detection in detections:
+                    tracklets.append(
+                        KalmanFilter(
+                            detection.x,
+                            detection.y,
+                            detection.orientation,
+                            withTheta=detection.withTheta,
+                            timestamp=timestamp))
 
-        elif len(tracklets) > len(detections):
-            if self.debug:
-                print("More tracklets than detections")
-            for index in zip(indexes[0],indexes[1]):
-                tracklets[index[0]].measX = detections[index[1]].x
-                tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
-                tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
-                updates.append(index[0])
+            elif len(tracklets) > len(detections):
+                if self.debug:
+                    print("More tracklets than detections")
+                for index in zip(indexes[0],indexes[1]):
+                    tracklets[index[0]].measX = detections[index[1]].x
+                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]].measTheta = detections[index[1]].orientation
+                    tracklets[index[0]].measTimestamp = timestamp
+                    tracklets[index[0]].measWithTheta = detections[index[1]].withTheta
+                    updates.append(index[0])
 
         return updates
 
