@@ -14,3 +14,6 @@
 [submodule "docker-volume/yolov7"]
 	path = docker-volume/yolov7
 	url = git@github.com:WongKinYiu/yolov7.git
+[submodule "ros2_ws/src/stage_ros2"]
+	path = ros2_ws/src/stage_ros2
+	url = git@github.com:Tristan9497/stage_ros2.git
