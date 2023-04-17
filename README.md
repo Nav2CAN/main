@@ -99,7 +99,7 @@ As the roject uses PoseNet from the jetson-inference package, it is important th
 
 # stage_ros2 ws compile and install
 ```
-sudo apt-get install git cmake g++ libjpeg8-dev libpng-dev libglu1-mesa-dev libltdl-dev libfltk1.1-dev
+sudo apt-get install git cmake g++ libjpeg8-dev libpng-dev libglu1-mesa-dev libltdl-dev libfltk1.1-dev ros-humble-moveit-resources-pr2-description
 cd ros2_ws/
 colcon build --symlink-install --cmake-args -DOpenGL_GL_PREFERENCE=LEGACY
 colcon build --symlink-install --packages-select stage_ros2
