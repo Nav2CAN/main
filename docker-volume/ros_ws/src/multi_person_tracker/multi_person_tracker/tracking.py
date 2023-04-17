@@ -1,10 +1,37 @@
-# import munkres
-import math
 import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 
+class Detection:
+    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True, keypoints: list= []):
+        self.x = x
+        self.y = y
+        self.orientation = orientation
+        self.withTheta = withTheta
+        self.keypoints = keypoints
+
 class KalmanFilter(object):
+    """
+    Kalman Filter with states x,y,theta,xdot,ydot,thetadot
+    Constant velocity model but with natural decay of velocity
+    Can be updated with and without theta by setting measWithTheta flag accordingly
+    
+    Parameters
+    ----------
+    x: initial x measurement
+    y: initial y measurement
+    theta: initial orientation measurement
+    dt: sampling time (time for 1 cycle)
+    u_x: acceleration in x-direction
+    u_y: acceleration in y-direction
+    u_theta: acceleration in orientation
+    std_acc: process noise magnitude
+    std_theta_acc: theta process noise magnitude
+    x_std_meas: standard deviation of the measurement in x-direction
+    y_std_meas: standard deviation of the measurement in y-direction
+    theta_std_meas: standard deviation of the measurement in orientation (theta)
+    decay: amount of decay applied to velocities at each prediction
+    """
     def __init__(
             self,
             x,
@@ -22,20 +49,9 @@ class KalmanFilter(object):
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
             decay=0.90,
+            keypoints=[],
             debug=False):
-        """
-        :param x: initial x measurement
-        :param y: initial y measurement
-        :param theta: initial orientation measurement
-        :param dt: sampling time (time for 1 cycle)
-        :param u_x: acceleration in x-direction
-        :param u_y: acceleration in y-direction
-        :param u_theta: acceleration in orientation
-        :param std_acc: process noise magnitude
-        :param x_std_meas: standard deviation of the measurement in x-direction
-        :param y_std_meas: standard deviation of the measurement in y-direction
-        :param theta_std_meas: standard deviation of the measurement in orientation (theta)
-        """
+
 
         self.debug = debug
 
@@ -55,6 +71,7 @@ class KalmanFilter(object):
         self.measTimestamp = timestamp
         self.measWithTheta = withTheta
         self.residual = 0
+        self.keypoints = keypoints
 
         # Define sampling time
         self.dt = dt
@@ -172,32 +189,57 @@ class KalmanFilter(object):
         self.personThetadot = self.x[5]
         self.timestamp = self.measTimestamp
 
+class PeopleTracker(object):
+    """
+    Multi object tracker class used for tracking 2D pose of humans
 
-class MunkresAssignment(object):
-    def __init__(self,
-                 newTrack=10,
-                 debug=False,
-                 dt=0.1):
-        """
-        :param centers: list of detected x, y and theta
-        :param current_tracklets: list of dictionaries of current tracked people
-            - x: map location of person, x value
-            - y: map location of person, y value
-            - theta: orientation of person
-            - timestamp: last seen (used for discarding old tracklets)
-        :param timestamp: current timestamp from detection (used for discarding old tracklets)
-        :param RadiusOfDetection: used for disallowing assigning detections too far away
-        :param gain: used for changing the weight of the orientation in distance function
-        """
+    Tracklets can be updated and initialised by supplying a List[Detection] and a timestamp in ns as int of when the detection occurred
+    Tracklets can be updated with and withoud Theta by setting withTheta of a Detection object to false
+    
+    Each Tracklet is represented by a Kalman Filter with a constant velocity model and a natural velocity decay that tracks X,Y,Theta,Xdot,Ydot,Thetadot
+    Detections are automatically assigned to the tracklets using munkres algorithm
 
-        # used to disable assigning certain distances to tracklets
-        self.debug = debug
+    Tracklets are added when the amount of tracklets is smaller than the amount of detections or when a detection is further away than newTrack
+    Tracklets are removed when they havent been updated in keeptime
+
+    Parameters
+    ----------
+    newTrack: distance at which new tracklets are initialised instead of being asigned to existing ones
+    keeptime: amount of time tracklets are held without being updated [s]
+    dt: dt at which kalman filter predictions are run
+    """
+    def __init__(self, newTrack=3, keeptime=5, dt=0.02,debug=False):
+        # initialise the tracker with an empty list of people
         self.newTrack = newTrack
+        self.keeptime = keeptime
+        self.dt = dt
+        self.debug=debug
+        self.tracklets = []
+
+    def predict(self):
+        # perform prediction with the Kalman filter
+        for person in self.tracklets:
+            person.predict()
+
+    def update(self, detections, timestamp):
+        # update the tracklets with new detections
+        popCounter = 0
+        updates = self.MunkresTrack(
+            detections, self.tracklets, timestamp)
+        for update in updates:
+            self.tracklets[update].update()
+
+        # remove tracklet if it hasn't been updated in too long
+        for i in range(len(self.tracklets)):
+            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
+                self.tracklets.pop(i-popCounter)
+                popCounter += 1
 
     def MunkresDistances(self, detections, tracklets, timestamp):
         # Calculate distances between objects and detections and save shortest
-        # distances while removing noise measurements
         distances = []
+        popCounter = 0
+
         for person in tracklets:
             currentPosX = person.personX
             currentPosY = person.personY
@@ -210,9 +252,9 @@ class MunkresAssignment(object):
                 dists.append(dist)
             distances.append(dists)
         distMat = np.array(distances)
+
+        # if detection is too far away pop it and create new KF for it
         mins = distMat.min(axis=0)
-        # if detection is too far away dont pop it and create new KF for it
-        popCounter = 0
         if np.any(mins > self.newTrack):
             for i, min in enumerate(mins):
                 if min > self.newTrack:
@@ -223,8 +265,8 @@ class MunkresAssignment(object):
                             detections[i - popCounter].orientation,
                             withTheta=detections[i - popCounter].withTheta,
                             timestamp=timestamp,
-                            dt=self.dt))
-
+                            dt=self.dt,
+                            keypoints=detections[i - popCounter].keypoints))
                     detections.pop(i - popCounter)
                     distMat = np.delete(distMat, i-popCounter, 0)
                     print(np.shape(distMat))
@@ -235,77 +277,45 @@ class MunkresAssignment(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-        indexes = self.MunkresDistances(
-            detections, tracklets, timestamp)
-        if len(detections):  # check again since we might have popped one
-            if self.debug:
-                if len(tracklets) < len(detections):
-                    print("More detections than tracklets")
-                if len(tracklets) > len(detections):
-                    print("More tracklets than detections")
-                if len(tracklets) == len(detections):
-                    print("Same amount of detections and tracklets")
 
-            for index in zip(indexes[0], indexes[1]):
-                tracklets[index[0]].measX = detections[index[1]].x
-                tracklets[index[0]].measY = detections[index[1]].y
-                tracklets[index[0]
-                          ].measTheta = detections[index[1]].orientation
-                tracklets[index[0]].measTimestamp = timestamp
-                tracklets[index[0]
-                          ].measWithTheta = detections[index[1]].withTheta
-                updates.append(index[0])
-                detections.pop(index[1])
+        if len(tracklets):
+            indexes = self.MunkresDistances(
+                detections, tracklets, timestamp)
+            if len(detections):  # check again since we might have popped one
+                if self.debug:
+                    if len(tracklets) < len(detections):
+                        print("More detections than tracklets")
+                    if len(tracklets) > len(detections):
+                        print("More tracklets than detections")
+                    if len(tracklets) == len(detections):
+                        print("Same amount of detections and tracklets")
 
-                for detection in detections:  # if its less tracklets this still contains some otherwise empty
-                    tracklets.append(
-                        KalmanFilter(
-                            detection.x,
-                            detection.y,
-                            detection.orientation,
-                            withTheta=detection.withTheta,
-                            timestamp=timestamp,
-                            dt=self.dt))
+                #assign all found assignments
+                for index in zip(indexes[0], indexes[1]):
+                    tracklets[index[0]].measX = detections[index[1]].x
+                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]
+                            ].measTheta = detections[index[1]].orientation
+                    tracklets[index[0]].measTimestamp = timestamp
+                    tracklets[index[0]
+                            ].measWithTheta = detections[index[1]].withTheta
+                    tracklets[index[0]
+                            ].keypoints = detections[index[1]].keypoints
+                    updates.append(index[0])
+                    detections.pop(index[1])#pop every assigned detection
+
+        #append the remaining detections as new KF's
+        for detection in detections:
+            tracklets.append(
+                KalmanFilter(
+                    detection.x,
+                    detection.y,
+                    detection.orientation,
+                    withTheta=detection.withTheta,
+                    timestamp=timestamp,
+                    dt=self.dt,
+                    keypoints=detection.keypoints))
+            
+
 
         return updates
-
-
-class PeopleTracker(object):
-    def __init__(self, debug=False, keeptime=5, dt=0.1):
-        # initialise the tracker with an empty list of people
-        self.dt = dt
-        self.assignment = MunkresAssignment(
-            newTrack=3, debug=debug, dt=self.dt)
-        self.keeptime = keeptime
-        self.personList = []
-
-    def predict(self):
-        # perform prediction with the Kalman filter
-        for person in self.personList:
-            person.predict()
-
-    def update(self, detections, timestamp):
-
-        # remove person if it hasn't been detected in too long
-        n_popped = 0
-        for i in range(len(self.personList)):
-            if abs(timestamp-self.personList[i-n_popped].timestamp)*1e-9 > self.keeptime:
-                self.personList.pop(i-n_popped)
-                n_popped += 1
-
-        # update the tracklets with new detections
-        if len(self.personList):
-            updates = self.assignment.MunkresTrack(
-                detections, self.personList, timestamp)
-            for update in updates:
-                self.personList[update].update()
-        else:
-            for detection in detections:
-                self.personList.append(
-                    KalmanFilter(
-                        detection.x,
-                        detection.y,
-                        detection.orientation,
-                        withTheta=detection.withTheta,
-                        timestamp=timestamp,
-                        dt=self.dt))
