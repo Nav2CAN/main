@@ -5,7 +5,7 @@ import threading
 import numpy as np
 import cv2
 from cv_bridge import CvBridge
-from tf_transformations import quaternion_from_euler, euler_from_quaternion
+from tf_transformations import quaternion_from_euler, euler_from_quaternion, quaternion_about_axis
 import tf2_ros
 import tf2_geometry_msgs
 import jetson_utils
@@ -16,7 +16,7 @@ import csv  # DC remove later
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point
 from visualization_msgs.msg import Marker, MarkerArray
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Pose, Quaternion
 
 from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
@@ -89,7 +89,7 @@ class MultiPersonTracker(Node):
             person = Person()
             person.position.x = float(p.personX)
             person.position.y = float(p.personY)
-            person.position.z = float(np.mod(p.personTheta + np.pi, 2 * np.pi) - np.pi)
+            person.position.z = float(p.personTheta)
             person.velocity.x = float(p.personXdot)
             person.velocity.y = float(p.personYdot)
             person.velocity.z = float(p.personThetadot)
@@ -104,12 +104,11 @@ class MultiPersonTracker(Node):
     def publishPoseArrows(self, people):
         # Set the scale of the marker
         marker_array_msg = MarkerArray()
+        
         for i, person in enumerate(people):
             # Set the pose of the marker
             if (person.personX and person.personY and person.personTheta):
-                theta= np.mod(person.personTheta + np.pi, 2 * np.pi) - np.pi
-                quad = quaternion_from_euler(
-                    0, 0, (2*np.pi + theta if theta < 0 else theta))
+                quad = quaternion_about_axis(person.personTheta, (0, 0, 1))
                 marker = Marker()
                 # TODO change when we have tf goodness
                 marker.header.frame_id = "/camera1_link"
@@ -119,10 +118,10 @@ class MultiPersonTracker(Node):
                 marker.pose.position.x = float(person.personX)
                 marker.pose.position.y = float(person.personY)
                 marker.pose.position.z = float(0)
-                marker.pose.orientation.x = float(quad[0])
-                marker.pose.orientation.y = float(quad[1])
-                marker.pose.orientation.z = float(quad[2])
-                marker.pose.orientation.w = float(quad[3])
+                marker.pose.orientation.x = quad[0]
+                marker.pose.orientation.y = quad[1]
+                marker.pose.orientation.z = quad[2]
+                marker.pose.orientation.w = quad[3]
                 marker.scale.x = 1.0
                 marker.scale.y = 0.1
                 marker.scale.z = 0.1
@@ -253,22 +252,25 @@ class MultiPersonTracker(Node):
                                 pose.position.x = float(person.x)
                                 pose.position.y = float(person.y)
                                 pose.position.z = float(0.0)
-                                quad = quaternion_from_euler(float(0.0), float(0.0), float(person.orientation))
+                                angle= person.orientation if person.orientation<np.pi else person.orientation-2*np.pi
+                                quad = quaternion_about_axis(person.orientation, (0, 0, 1))
                                 pose.orientation.x=quad[0]
                                 pose.orientation.y=quad[1]
                                 pose.orientation.z=quad[2]
                                 pose.orientation.w=quad[3]
                                 pose = tf2_geometry_msgs.do_transform_pose(
                                     pose, trans)
-                                quad =[pose.orientation.x,
+                                quad =[
+                                    pose.orientation.x,
                                     pose.orientation.y,
                                     pose.orientation.z,
-                                    pose.orientation.w
+                                    pose.orientation.w,
                                     ]
-
+                                angle=euler_from_quaternion(quad)[2]
+                                angle=angle if angle>0 else angle+2*np.pi
                                 detections.append(
-                                    Detection(pose.position.x, pose.position.y, euler_from_quaternion(quad)[2], person.withTheta))
-
+                                    Detection(pose.position.x, pose.position.y,angle, person.withTheta))
+                                self.writing(angle)
                         # Update tracker with new detections
                         if len(detections) != 0:
                             self.tracker.people_tracker.update(
@@ -276,7 +278,7 @@ class MultiPersonTracker(Node):
 
                             # save image and make csv if required
                             if self.debug:
-                                self.writing(kpPersons)
+                                # self.writing(kpPersons)
                                 self.tracker.peopleCount += len(
                                     kpPersons)
                                 self.tracker.saveImage(self.cudaimage)
@@ -307,30 +309,31 @@ class MultiPersonTracker(Node):
                 kpPerson = person_keypoint(pose.Keypoints, self.depth)
                 persons.append(kpPerson)
             return persons
-
-        def writing(self, personlist):
+        def writing(self, orientation):
             '''
             Data collection function for writing csv file with person variables for captured images
             '''
-            with open('SanityCheck.csv', mode='a') as csvfile:
+            with open('Measurement.csv', mode='a') as csvfile:
                 writer = csv.writer(csvfile, delimiter=',',
                                     quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
                 if not self.tracker.written:
-                    writer.writerow(['ImageID', 'Timestamp', 'PersonX', 'PersonY', 'Orientation',
-                                    'left_shoulderX', 'left_shoulderY', 'left_shoulderZ',
-                                     'right_shoulderX', 'right_shoulderY', 'right_shoulderZ'])
-                    self.tracker.written = True
-                for person in personlist:
-                    left_shoulder = next(
-                        (point for point in person.keypoints if point.ID == 5), None)
-                    right_shoulder = next(
-                        (point for point in person.keypoints if point.ID == 6), None)
-                    if left_shoulder and right_shoulder:
-                        writer.writerow([str(self.tracker.imageCount), str(self.timestamp), str(round(person.x, 3)), str(round(person.y, 3)), str(round(person.orientation, 3)),
-                                        str(round(left_shoulder.x, 3)), str(
-                                            round(left_shoulder.y, 3)), str(round(left_shoulder.z, 3)),
-                                        str(round(right_shoulder.x, 3)), str(round(right_shoulder.y, 3)), str(round(right_shoulder.z, 3))])
+                    writer.writerow(['Orientation'])
+                
+                self.tracker.written = True
+                writer.writerow([str(round(orientation, 3))])
+    # def writingOutput(self, personlist):
+    #     with open('Output.csv', mode='a') as csvfile:
+    #         writer = csv.writer(csvfile, delimiter=',',
+    #                             quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+    #         if not self.tracker.written:
+    #             writer.writerow(["orientation"])
+    #             self.tracker.written = True
+    #         for person in personlist:
+    #             writer.writerow([str(round(right_shoulder.z, 3))])
+
+
 
 
 def main(args=None):
@@ -339,7 +342,7 @@ def main(args=None):
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02,debug=False, target_frame="camera1_link")
+        dt=0.02,debug=True, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()

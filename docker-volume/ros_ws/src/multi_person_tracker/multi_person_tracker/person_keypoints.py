@@ -37,10 +37,10 @@ class keypoint():
         Idx = np.sqrt((Id**2) + (centreX**2))
         # TODO check if arctan is better than arctan2
         # angle between Idx and the line going from the camera to the centre of the bb
-        delta = np.arctan(centreY/Idx)
+        delta = np.arctan2(centreY,Idx)
 
         # Angle between idx and ID
-        gamma = np.arctan(centreX/Id)
+        gamma = np.arctan2(centreX,Id)
 
         # get distances of depth image assuming same resolution and allignment relative to bounding box coordinates
         distBox = depth[int(max(self.yImage - depthRadiusY, 0)):
@@ -121,16 +121,18 @@ class person_keypoint:
             self.withTheta = False
         else:
             # arctan returns angle of shoulders therefore normal vector is offset by 90deg
-            temp = np.arctan2(right.y-left.y, right.x-left.x)+np.pi/2
-            if temp != np.nan:
-                self.orientation = temp
+            beta = np.arctan2(left.y-right.y, right.x-left.x)
+            #make angle 0->2pi
+            beta = beta if beta>0 else beta+2*np.pi
+            
+            beta = np.pi/2 - beta
+
+
+            if beta != np.nan:
+                self.orientation = np.mod(beta, 2 * np.pi) #make sure its between 0->2 pi 
             else:
                 self.orientation = 0.0
             # get angle back into the spectrum of -pi->pi
-            if self.orientation < -np.pi:
-                self.orientation += 2*np.pi
-            elif self.orientation > np.pi:
-                self.orientation -= 2*np.pi
 
     def getPersonPosition(self):
         importantKeypoints = [self.neck, self.left_shoulder,
@@ -147,22 +149,3 @@ class person_keypoint:
         if len(kpx) != 0 and len(kpy) != 0:
             self.x = np.nanmean(np.array(kpx))
             self.y = np.nanmean(np.array(kpy))
-
-
-class person_tracking:
-    def __init__(self, x, y, theta):
-        self.x = x
-        self.y = y
-        self.theta = theta
-        self.xdot = None
-        self.ydot = None
-        self.thetadot = None
-
-    def calculate3DPose(self):
-        None
-
-    def calculateOrientation(self):
-        None
-
-    def calculatePosition(self):
-        None
