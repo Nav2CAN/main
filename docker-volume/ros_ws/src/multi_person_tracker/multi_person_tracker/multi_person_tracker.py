@@ -19,33 +19,28 @@ from geometry_msgs.msg import Pose
 
 from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
-from .tracking import PeopleTracker
+from .tracking import PeopleTracker, Detection
 
-
-class Detection:
-    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True):
-        self.x = x
-        self.y = y
-        self.orientation = orientation
-        self.withTheta = withTheta
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, debug: bool = False, publishPoseMsg: bool = True, dt=0.1, n_cameras=2, keeptime=5, target_frame: str = "map"):
+    def __init__(self, publishPoseMsg: bool = True, dt = 0.1, n_cameras = 2, newTrack = 3, keeptime = 5, target_frame: str = "map", debug: bool = False):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
         The Class uses Intel Realsense messages on the ROS2 network as input for rgb and depth images
-        :param debug: display debug messages in the console
         :param publishPoseMsg: publish marker arrows to the ROS2 network 
         :param dt: rate of prediction for the trackers
         :param n_cameras: number of publishing cameras on the ROS2 network
+        :param newTrack: meters distance at which detection is not assigned to tracklets and new ones are generated 
         :param keeptime: seconds to keep tracklets after last detection
+        :param target_frame ouput tf_frame of the poses
+        :param debug: display debug messages in the console
         '''
 
         super().__init__('multi_person_tracker')
         self.create_timer(dt, self.timer_callback)
-        self.people_tracker = PeopleTracker(debug=False, keeptime=keeptime)
+        self.people_tracker = PeopleTracker(newTrack = newTrack, keeptime = keeptime, dt = dt, debug = debug)
         self.people_publisher = self.create_publisher(People, 'people', 10)
         self.people_arrow_publisher = self.create_publisher(
             MarkerArray, 'people_arrows', 10)
@@ -84,7 +79,7 @@ class MultiPersonTracker(Node):
         # TODO change when we have tf goodness
         people.header.frame_id = "/camera1_link"
         # TODO implement index and reliabílity
-        for p in self.people_tracker.personList:
+        for p in self.people_tracker.tracklets:
             person = Person()
             person.position.x = float(p.personX)
             person.position.y = float(p.personY)
@@ -96,7 +91,7 @@ class MultiPersonTracker(Node):
 
         self.people_publisher.publish(people)
         if self.publishPoseMsg:
-            self.publishPoseArrows(self.people_tracker.personList)
+            self.publishPoseArrows(self.people_tracker.tracklets)
 
         self.people_tracker.predict()
 
@@ -332,7 +327,7 @@ def main(args=None):
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02, debug=False, target_frame="camera1_link")
+        dt=0.02, target_frame="camera1_link", debug=False)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
