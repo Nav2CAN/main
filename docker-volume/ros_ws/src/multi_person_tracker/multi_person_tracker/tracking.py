@@ -16,7 +16,7 @@ class KalmanFilter(object):
             u_y=0,
             u_theta=0,
             std_acc=0.0001,
-            std_theta_acc=0.0001,
+            std_theta_acc=0.00001,
             x_std_meas=0.000001,
             y_std_meas=0.000001,
             theta_std_meas=0.000001,
@@ -115,7 +115,7 @@ class KalmanFilter(object):
                                       [0, 0, 1, 0, 0, 0.0],
                                       [0, 0, 0, self.decay, 0, 0],
                                       [0, 0, 0, 0, self.decay, 0],
-                                      [0, 0, 0, 0, 0, self.decay/10]])
+                                      [0, 0, 0, 0, 0, self.decay]])
 
     def angleUnWrap(self, old_angle, new_angle):
         # function for unwrapping angle around if input angle crosses boundary
