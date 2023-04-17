@@ -47,7 +47,7 @@ class KalmanFilter(object):
         self.personYdot = 0
         self.personThetadot = 0
         self.timestamp = timestamp
-        self.decay = decay*dt #so the decay is consistent over different dt's
+        self.decay = decay*dt  # so the decay is consistent over different dt's
         self.initialized = False
         self.measX = x
         self.measY = y
@@ -211,7 +211,7 @@ class MunkresAssignment(object):
             distances.append(dists)
         distMat = np.array(distances)
         mins = distMat.min(axis=0)
-        #if detection is too far away dont pop it and create new KF for it
+        # if detection is too far away dont pop it and create new KF for it
         popCounter = 0
         if np.any(mins > self.newTrack):
             for i, min in enumerate(mins):
@@ -237,7 +237,7 @@ class MunkresAssignment(object):
         updates = []
         indexes = self.MunkresDistances(
             detections, tracklets, timestamp)
-        if len(detections):#check again since we might have popped one
+        if len(detections):  # check again since we might have popped one
             if self.debug:
                 if len(tracklets) < len(detections):
                     print("More detections than tracklets")
@@ -250,14 +250,14 @@ class MunkresAssignment(object):
                 tracklets[index[0]].measX = detections[index[1]].x
                 tracklets[index[0]].measY = detections[index[1]].y
                 tracklets[index[0]
-                            ].measTheta = detections[index[1]].orientation
+                          ].measTheta = detections[index[1]].orientation
                 tracklets[index[0]].measTimestamp = timestamp
                 tracklets[index[0]
-                            ].measWithTheta = detections[index[1]].withTheta
+                          ].measWithTheta = detections[index[1]].withTheta
                 updates.append(index[0])
                 detections.pop(index[1])
 
-                for detection in detections: #if its less tracklets this still contains some otherwise empty
+                for detection in detections:  # if its less tracklets this still contains some otherwise empty
                     tracklets.append(
                         KalmanFilter(
                             detection.x,
@@ -271,10 +271,11 @@ class MunkresAssignment(object):
 
 
 class PeopleTracker(object):
-    def __init__(self, debug=False, keeptime=5,dt=0.1):
+    def __init__(self, debug=False, keeptime=5, dt=0.1):
         # initialise the tracker with an empty list of people
-        self.dt=dt
-        self.assignment = MunkresAssignment(newTrack=3,debug=debug,dt=self.dt)
+        self.dt = dt
+        self.assignment = MunkresAssignment(
+            newTrack=3, debug=debug, dt=self.dt)
         self.keeptime = keeptime
         self.personList = []
 
@@ -293,7 +294,7 @@ class PeopleTracker(object):
                 n_popped += 1
 
         # update the tracklets with new detections
-        if len(self.personList)>0:
+        if len(self.personList):
             updates = self.assignment.MunkresTrack(
                 detections, self.personList, timestamp)
             for update in updates:
