@@ -37,10 +37,10 @@ class keypoint():
         Idx = np.sqrt((Id**2) + (centreX**2))
         # TODO check if arctan is better than arctan2
         # angle between Idx and the line going from the camera to the centre of the bb
-        delta = np.arctan2(centreY,Idx)
+        delta = np.arctan2(centreY, Idx)
 
         # Angle between idx and ID
-        gamma = np.arctan2(centreX,Id)
+        gamma = np.arctan2(centreX, Id)
 
         # get distances of depth image assuming same resolution and allignment relative to bounding box coordinates
         distBox = depth[int(max(self.yImage - depthRadiusY, 0)):
@@ -122,14 +122,14 @@ class person_keypoint:
         else:
             # arctan returns angle of shoulders therefore normal vector is offset by 90deg
             beta = np.arctan2(left.y-right.y, right.x-left.x)
-            #make angle 0->2pi
-            beta = beta if beta>0 else beta+2*np.pi
-            
+            # make angle 0->2pi
+            beta = beta if beta > 0 else beta+2*np.pi
+
             beta = np.pi/2 - beta
 
-
             if beta != np.nan:
-                self.orientation = np.mod(beta, 2 * np.pi) #make sure its between 0->2 pi 
+                # make sure its between 0->2 pi
+                self.orientation = np.mod(beta, 2 * np.pi)
             else:
                 self.orientation = 0.0
             # get angle back into the spectrum of -pi->pi

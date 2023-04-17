@@ -24,11 +24,11 @@ from .tracking import PeopleTracker
 
 
 class Detection:
-    def __init__(self, x: float, y: float, orientation: float, withTheta: bool=True):
+    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True):
         self.x = x
         self.y = y
         self.orientation = orientation
-        self.withTheta=withTheta
+        self.withTheta = withTheta
 
 
 class MultiPersonTracker(Node):
@@ -58,7 +58,7 @@ class MultiPersonTracker(Node):
         self.imageCount = -1
         self.written = False
         self.cameras = []
-        self.Orientations=[]
+        self.Orientations = []
         # Setup variables for PoseNet
         self.network = "resnet18-body"
         self.overlay = "links,keypoints,boxes"
@@ -104,7 +104,7 @@ class MultiPersonTracker(Node):
     def publishPoseArrows(self, people):
         # Set the scale of the marker
         marker_array_msg = MarkerArray()
-        
+
         for i, person in enumerate(people):
             # Set the pose of the marker
             if (person.personX and person.personY and person.personTheta):
@@ -196,7 +196,7 @@ class MultiPersonTracker(Node):
             self.bridge = CvBridge()
             self.timestamp = None
             self.tracker = tracker_self
-            self.debug = self.tracker.debug 
+            self.debug = self.tracker.debug
             if self.debug:
                 print("init camera")
 
@@ -239,37 +239,39 @@ class MultiPersonTracker(Node):
 
                     # make detection objects
                     detections = []
-                    trans=None
+                    trans = None
                     try:
-                        trans = self.tf_buffer.lookup_transform(self.tracker.target_frame, self.tfFrame, self.tracker.get_clock().now())
+                        trans = self.tf_buffer.lookup_transform(
+                            self.tracker.target_frame, self.tfFrame, self.tracker.get_clock().now())
                     except:
                         None
                     if trans:
                         pose = Pose()
                         for person in kpPersons:
-                            if person.x !=None and person.y !=None:
+                            if person.x != None and person.y != None:
                                 # transformation to target_frame
                                 pose.position.x = float(person.x)
                                 pose.position.y = float(person.y)
                                 pose.position.z = float(0.0)
-                                angle= person.orientation if person.orientation<np.pi else person.orientation-2*np.pi
-                                quad = quaternion_about_axis(person.orientation, (0, 0, 1))
-                                pose.orientation.x=quad[0]
-                                pose.orientation.y=quad[1]
-                                pose.orientation.z=quad[2]
-                                pose.orientation.w=quad[3]
+                                angle = person.orientation if person.orientation < np.pi else person.orientation-2*np.pi
+                                quad = quaternion_about_axis(
+                                    person.orientation, (0, 0, 1))
+                                pose.orientation.x = quad[0]
+                                pose.orientation.y = quad[1]
+                                pose.orientation.z = quad[2]
+                                pose.orientation.w = quad[3]
                                 pose = tf2_geometry_msgs.do_transform_pose(
                                     pose, trans)
-                                quad =[
+                                quad = [
                                     pose.orientation.x,
                                     pose.orientation.y,
                                     pose.orientation.z,
                                     pose.orientation.w,
-                                    ]
-                                angle=euler_from_quaternion(quad)[2]
-                                angle=angle if angle>0 else angle+2*np.pi
+                                ]
+                                angle = euler_from_quaternion(quad)[2]
+                                angle = angle if angle > 0 else angle+2*np.pi
                                 detections.append(
-                                    Detection(pose.position.x, pose.position.y,angle, person.withTheta))
+                                    Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                                 self.writing(angle)
                         # Update tracker with new detections
                         if len(detections) != 0:
@@ -309,6 +311,7 @@ class MultiPersonTracker(Node):
                 kpPerson = person_keypoint(pose.Keypoints, self.depth)
                 persons.append(kpPerson)
             return persons
+
         def writing(self, orientation):
             '''
             Data collection function for writing csv file with person variables for captured images
@@ -319,7 +322,7 @@ class MultiPersonTracker(Node):
 
                 if not self.tracker.written:
                     writer.writerow(['Orientation'])
-                
+
                 self.tracker.written = True
                 writer.writerow([str(round(orientation, 3))])
     # def writingOutput(self, personlist):
@@ -334,15 +337,13 @@ class MultiPersonTracker(Node):
     #             writer.writerow([str(round(right_shoulder.z, 3))])
 
 
-
-
 def main(args=None):
 
     rclpy.init(args=args)
 
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(
-        dt=0.02,debug=True, target_frame="camera1_link")
+        dt=0.02, debug=True, target_frame="camera1_link")
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
