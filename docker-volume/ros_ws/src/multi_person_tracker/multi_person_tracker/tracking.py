@@ -3,19 +3,20 @@ from scipy.optimize import linear_sum_assignment
 
 
 class Detection:
-    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True, keypoints: list= []):
+    def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True, keypoints: list = []):
         self.x = x
         self.y = y
         self.orientation = orientation
         self.withTheta = withTheta
         self.keypoints = keypoints
 
+
 class KalmanFilter(object):
     """
     Kalman Filter with states x,y,theta,xdot,ydot,thetadot
     Constant velocity model but with natural decay of velocity
     Can be updated with and without theta by setting measWithTheta flag accordingly
-    
+
     Parameters
     ----------
     x: initial x measurement
@@ -32,6 +33,7 @@ class KalmanFilter(object):
     theta_std_meas: standard deviation of the measurement in orientation (theta)
     decay: amount of decay applied to velocities at each prediction
     """
+
     def __init__(
             self,
             x,
@@ -51,7 +53,6 @@ class KalmanFilter(object):
             decay=0.90,
             keypoints=[],
             debug=False):
-
 
         self.debug = debug
 
@@ -189,13 +190,14 @@ class KalmanFilter(object):
         self.personThetadot = self.x[5]
         self.timestamp = self.measTimestamp
 
+
 class PeopleTracker(object):
     """
     Multi object tracker class used for tracking 2D pose of humans
 
     Tracklets can be updated and initialised by supplying a List[Detection] and a timestamp in ns as int of when the detection occurred
     Tracklets can be updated with and withoud Theta by setting withTheta of a Detection object to false
-    
+
     Each Tracklet is represented by a Kalman Filter with a constant velocity model and a natural velocity decay that tracks X,Y,Theta,Xdot,Ydot,Thetadot
     Detections are automatically assigned to the tracklets using munkres algorithm
 
@@ -208,12 +210,13 @@ class PeopleTracker(object):
     keeptime: amount of time tracklets are held without being updated [s]
     dt: dt at which kalman filter predictions are run
     """
-    def __init__(self, newTrack=3, keeptime=5, dt=0.02,debug=False):
+
+    def __init__(self, newTrack=3, keeptime=5, dt=0.02, debug=False):
         # initialise the tracker with an empty list of people
         self.newTrack = newTrack
         self.keeptime = keeptime
         self.dt = dt
-        self.debug=debug
+        self.debug = debug
         self.tracklets = []
 
     def predict(self):
@@ -223,17 +226,10 @@ class PeopleTracker(object):
 
     def update(self, detections, timestamp):
         # update the tracklets with new detections
-        popCounter = 0
         updates = self.MunkresTrack(
             detections, self.tracklets, timestamp)
         for update in updates:
             self.tracklets[update].update()
-
-        # remove tracklet if it hasn't been updated in too long
-        for i in range(len(self.tracklets)):
-            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
-                self.tracklets.pop(i-popCounter)
-                popCounter += 1
 
     def MunkresDistances(self, detections, tracklets, timestamp):
         # Calculate distances between objects and detections and save shortest
@@ -277,6 +273,13 @@ class PeopleTracker(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
+        popCounter = 0
+
+        # remove tracklet if it hasn't been updated in too long
+        for i in range(len(self.tracklets)):
+            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
+                self.tracklets.pop(i-popCounter)
+                popCounter += 1
 
         if len(tracklets):
             indexes = self.MunkresDistances(
@@ -290,21 +293,21 @@ class PeopleTracker(object):
                     if len(tracklets) == len(detections):
                         print("Same amount of detections and tracklets")
 
-                #assign all found assignments
+                # assign all found assignments
                 for index in zip(indexes[0], indexes[1]):
                     tracklets[index[0]].measX = detections[index[1]].x
                     tracklets[index[0]].measY = detections[index[1]].y
                     tracklets[index[0]
-                            ].measTheta = detections[index[1]].orientation
+                              ].measTheta = detections[index[1]].orientation
                     tracklets[index[0]].measTimestamp = timestamp
                     tracklets[index[0]
-                            ].measWithTheta = detections[index[1]].withTheta
+                              ].measWithTheta = detections[index[1]].withTheta
                     tracklets[index[0]
-                            ].keypoints = detections[index[1]].keypoints
+                              ].keypoints = detections[index[1]].keypoints
                     updates.append(index[0])
-                    detections.pop(index[1])#pop every assigned detection
+                    detections.pop(index[1])  # pop every assigned detection
 
-        #append the remaining detections as new KF's
+        # append the remaining detections as new KF's
         for detection in detections:
             tracklets.append(
                 KalmanFilter(
@@ -315,7 +318,5 @@ class PeopleTracker(object):
                     timestamp=timestamp,
                     dt=self.dt,
                     keypoints=detection.keypoints))
-            
-
 
         return updates
