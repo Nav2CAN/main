@@ -11,9 +11,6 @@
 [submodule "jetson-containers"]
 	path = jetson-containers
 	url = git@github.com:Tristan9497/jetson-containers.git
-[submodule "docker-volume/yolov7"]
-	path = docker-volume/yolov7
-	url = git@github.com:WongKinYiu/yolov7.git
 [submodule "ros2_ws/src/stage_ros2"]
 	path = ros2_ws/src/stage_ros2
 	url = git@github.com:Tristan9497/stage_ros2.git
@@ -21,3 +18,9 @@
 	path = ros2_ws/src/Stage
 	url = git@github.com:tuw-robotics/Stage.git
 	branch = ros2
+[submodule "ros1_ws/src/CoHAN_simulation"]
+	path = ros1_ws/src/CoHAN_simulation
+	url = git@github.com:JonathanESchmidt/CoHAN_simulation.git
+[submodule "ros1_ws/src/CoHAN_Planner"]
+	path = ros1_ws/src/CoHAN_Planner
+	url = https://github.com/sphanit/CoHAN_Planner
