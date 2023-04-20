@@ -1,5 +1,7 @@
 
 devel/
+.catkin_tools/
+logs/
 install/
 log/
 build/
