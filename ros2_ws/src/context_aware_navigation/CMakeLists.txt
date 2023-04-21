@@ -7,30 +7,37 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
+find_package(nav2_common REQUIRED)
+find_package(navigation2 REQUIRED)
+# find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclpy REQUIRED)
+# find_package(rclpy REQUIRED)
 
 # Include cpp "include" directory
 include_directories(include)
 
 # Create cpp executables
-add_executable(cpp_exe src/cpp_node.cpp)
-ament_target_dependencies(cpp_exe rclcpp)
+# add_executable(cpp_exe src/cpp_node.cpp)
+# ament_target_dependencies(cpp_exe rclcpp)
 
 #install cpp executable
-install(TARGETS
-  cpp_exe
-  DESTINATION lib/${PROJECT_NAME}
-)
+# install(TARGETS
+#   DESTINATION lib/${PROJECT_NAME}
+# )
 
 # Install python modules
-ament_python_install_package(${PROJECT_NAME})
+# ament_python_install_package(${PROJECT_NAME})
 
 # Install python executables
-install(PROGRAMS
-  scripts/py_node.py
-  DESTINATION lib/${PROJECT_NAME}
+# install(PROGRAMS
+#   scripts/py_node.py
+#   DESTINATION lib/${PROJECT_NAME}
+# )
+
+install(DIRECTORY
+  launch
+  params
+  DESTINATION share/${PROJECT_NAME}
 )
 
 ament_package()
