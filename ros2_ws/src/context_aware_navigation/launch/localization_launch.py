@@ -17,11 +17,9 @@ import os
 from ament_index_python.packages import get_package_share_directory
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, GroupAction
+from launch.actions import DeclareLaunchArgument, GroupAction, LogInfo
 from launch.actions import SetEnvironmentVariable
 from launch.conditions import IfCondition
-from launch.substitutions import EqualsSubstitution
-from launch.substitutions import NotEqualsSubstitution
 from launch.substitutions import LaunchConfiguration, PythonExpression
 from launch_ros.actions import LoadComposableNodes, SetParameter
 from launch_ros.actions import Node
@@ -31,7 +29,7 @@ from nav2_common.launch import RewrittenYaml
 
 def generate_launch_description():
     # Get the launch directory
-    bringup_dir = get_package_share_directory('nav2_bringup')
+    bringup_dir = get_package_share_directory('context_aware_navigation')
 
     namespace = LaunchConfiguration('namespace')
     map_yaml_file = LaunchConfiguration('map')
@@ -54,7 +52,6 @@ def generate_launch_description():
     #              https://github.com/ros2/launch_ros/issues/56
     remappings = [('/tf', 'tf'),
                   ('/tf_static', 'tf_static')]
-
     configured_params = RewrittenYaml(
         source_file=params_file,
         root_key=namespace,
@@ -109,20 +106,6 @@ def generate_launch_description():
         actions=[
             SetParameter('use_sim_time', use_sim_time),
             Node(
-                condition=IfCondition(EqualsSubstitution(
-                    LaunchConfiguration('map'), '')),
-                package='nav2_map_server',
-                executable='map_server',
-                name='map_server',
-                output='screen',
-                respawn=use_respawn,
-                respawn_delay=2.0,
-                parameters=[configured_params],
-                arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings),
-            Node(
-                condition=IfCondition(NotEqualsSubstitution(
-                    LaunchConfiguration('map'), '')),
                 package='nav2_map_server',
                 executable='map_server',
                 name='map_server',
@@ -164,21 +147,6 @@ def generate_launch_description():
             SetParameter('use_sim_time', use_sim_time),
             LoadComposableNodes(
                 target_container=container_name_full,
-                condition=IfCondition(EqualsSubstitution(
-                    LaunchConfiguration('map'), '')),
-                composable_node_descriptions=[
-                    ComposableNode(
-                        package='nav2_map_server',
-                        plugin='nav2_map_server::MapServer',
-                        name='map_server',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                ],
-            ),
-            LoadComposableNodes(
-                target_container=container_name_full,
-                condition=IfCondition(NotEqualsSubstitution(
-                    LaunchConfiguration('map'), '')),
                 composable_node_descriptions=[
                     ComposableNode(
                         package='nav2_map_server',
@@ -211,7 +179,6 @@ def generate_launch_description():
 
     # Create the launch description and populate
     ld = LaunchDescription()
-
     # Set environment variables
     ld.add_action(stdout_linebuf_envvar)
 
