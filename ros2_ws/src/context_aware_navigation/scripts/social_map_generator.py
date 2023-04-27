@@ -3,35 +3,70 @@ from rclpy.node import Node
 
 from std_msgs.msg import String
 
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 
-class MinimalPublisher(Node):
+import numpy as np
+from scipy.ndimage import rotate
+from multi_person_tracker_interfaces.msg import People, Person
 
-    def __init__(self):
-        super().__init__('minimal_publisher')
-        self.publisher_ = self.create_publisher(String, 'topic', 10)
-        timer_period = 0.5  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
-        self.i = 0
 
-    def timer_callback(self):
-        msg = String()
-        msg.data = 'Hello World: %d' % self.i
-        self.publisher_.publish(msg)
-        self.get_logger().info('Publishing: "%s"' % msg.data)
-        self.i += 1
+class SocialMapGenerator(Node):
+
+    def __init__(self, height, width, density):
+        super().__init__('social_map_generator')
+        self.width = width
+        self.height = height
+        self.density = density
+        self.center = ((width*density)/2, (height*density)/2)
+        self.people_sub = self.create_subscription(
+            People,
+            'people',
+            self.people_callback,
+            10)
+        # tf listener stuff so we can transform people into there
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.people_sub  # prevent unused variable warning
+
+    def people_callback(self, msg: People):
+        # get the latest transform between the robot and the map
+        try:
+            t = self.tf_buffer.lookup_transform(
+                "pr2/base_link",
+                "map",
+                rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform base_link to map: {ex}')
+            return
+
+        social_map = np.zeros(
+            (self.height*self.density, self.width*self.density), np.float32)
+
+        people = []
+        for person in msg.people:
+            # make the person position relative to the non rotating robot
+            X = (person.position.x - t.transform.translation.x)*self.density
+            Y = (person.position.y - t.transform.translation.y)*self.density
+            if abs(X) < self.center[0] or abs(Y) < self.center[1]:
+                X = np.floor(X + self.center[0])
+                Y = np.floor(Y + self.center[1])
+                # TODO draw distribution onto map
+                social_zone = rotate(LUT, person.position.z, reshape=True)
+                (width, height) = np.shape(social_zone)
+                social_map[X-width:X+width, Y-height:Y +
+                           height] = np.maximum(social_map[X-width:X+width, Y-height:Y +
+                                                           height], social_zone)
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    minimal_publisher = MinimalPublisher()
-
-    rclpy.spin(minimal_publisher)
-
-    # Destroy the node explicitly
-    # (optional - otherwise it will be done automatically
-    # when the garbage collector destroys the node object)
-    minimal_publisher.destroy_node()
+    social_map_generator = SocialMapGenerator()
+    rclpy.spin(social_map_generator)
+    social_map_generator.destroy_node()
     rclpy.shutdown()
 
 
