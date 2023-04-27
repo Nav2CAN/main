@@ -8,6 +8,7 @@ from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 import numpy as np
+from numba import jit
 from scipy.ndimage import rotate
 from multi_person_tracker_interfaces.msg import People, Person
 
@@ -19,6 +20,12 @@ class SocialMapGenerator(Node):
         self.width = width
         self.height = height
         self.density = density
+        # %standard diviations %adjust to get different shapes
+        self.sigmaFront = 2
+        self.sigmaSide = 4/3
+        self.sigmaBack = 1
+        self.socialZones = []
+        self.velocities = np.arange(0, 1.5, 0.1)
         self.center = ((width*density)/2, (height*density)/2)
         self.people_sub = self.create_subscription(
             People,
@@ -30,6 +37,7 @@ class SocialMapGenerator(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.people_sub  # prevent unused variable warning
 
+    @jit(nopython=True)
     def people_callback(self, msg: People):
         # get the latest transform between the robot and the map
         try:
@@ -45,7 +53,6 @@ class SocialMapGenerator(Node):
         social_map = np.zeros(
             (self.height*self.density, self.width*self.density), np.float32)
 
-        people = []
         for person in msg.people:
             # make the person position relative to the non rotating robot
             X = (person.position.x - t.transform.translation.x)*self.density
@@ -56,14 +63,63 @@ class SocialMapGenerator(Node):
                 # rotate LUT result for specific velocity
                 vel = (person.velocity.x*person.velocity.x +
                        person.velocity.y*person.velocity.y)**0.5
-
+                idx = (np.abs(self.velocities - vel)).argmin()
                 social_zone = rotate(
-                    LUT(vel), person.position.z, reshape=True)
+                    self.socialZones(idx), person.position.z, reshape=True)
 
                 (width, height) = np.shape(social_zone)
                 social_map[X-width:X+width, Y-height:Y +
                            height] = np.maximum(social_map[X-width:X+width, Y-height:Y +
                                                            height], social_zone)
+            # TODO publish map
+
+    def initSocialZones(self):
+
+        plotsize = 3
+        # %create canvas
+        # shift x by 1 meter
+        x = np.arange(plotsize+1, plotsize+1, self.density)
+        y = np.arange(plotsize, plotsize, self.density)
+
+        for vel in self.velocities:
+            self.socialZones.append(self.makeProxemicZone(
+                0, 0, x, y, 0, self.sigmaFront+vel, self.sigmaSide, self.sigmaBack))
+
+    @jit(nopython=True)
+    def asymetricGaus(self, x=0, y=0, x0=0, y0=0, theta=0, sigmaFront=2, sigmaSide=4/3, sigmaBack=1) -> float:
+        angle = np.mod(np.arctan2(y-y0, x-x0), 2*np.pi)+theta
+        if (abs(angle) >= np.pi/2 and abs(angle) <= np.pi+np.pi/2):
+            sigma = sigmaBack
+        else:
+            sigma = sigmaFront
+
+        a = ((np.cos(theta) ** 2)/(2*sigma ** 2)) + \
+            ((np.sin(theta) ** 2)/(2*sigmaSide ** 2))
+        b = (np.sin(2*theta)/(4*sigma ** 2)) - \
+            (np.sin(2*theta)/(4*sigmaSide ** 2))
+        c = ((np.sin(theta) ** 2)/(2*sigma ** 2)) + \
+            ((np.cos(theta) ** 2)/(2*sigmaSide ** 2))
+
+        return np.exp(-(a*(x-x0) ** 2+2*b*(x-x0)*(y-y0)+c*(y-y0) ** 2))
+
+    @jit(nopython=True)
+    def makeProxemicZone(self, x0, y0, x, y, theta, sigmaFront, sigmaSide, sigmaBack) -> np.ndarray:
+        social = np.zeros((len(x), len(y)))
+        for i in range(len(x)):
+            for j in range(len(y)):
+                social[j, i] = self.thresholdCost(self.asymetricGaus(
+                    x[i], y[j], x0, y0, theta, sigmaFront))
+        return social
+
+    @jit(nopython=True)
+    def thresholdCost(self, cost: float) -> float:
+        if cost > self.asymetricGaus(y=0.5):
+            return 255
+        if cost > self.asymetricGaus(y=1.0):
+            return 255*self.asymetricGaus(y=1.0)
+        if cost > self.asymetricGaus(y=1.5):
+            return cost*255
+        return 0
 
 
 def main(args=None):
