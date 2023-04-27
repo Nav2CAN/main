@@ -27,3 +27,6 @@
 [submodule "ros2_ws/src/multi_person_tracker_interfaces"]
 	path = ros2_ws/src/multi_person_tracker_interfaces
 	url = git@github.com:Tristan9497/multi_person_tracker_interfaces.git
+[submodule "docker-volume/ros_ws/src/multi_person_tracker_interfaces"]
+	path = docker-volume/ros_ws/src/multi_person_tracker_interfaces
+	url = git@github.com:Tristan9497/multi_person_tracker_interfaces.git
