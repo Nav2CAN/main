@@ -24,3 +24,6 @@
 [submodule "ros1_ws/src/CoHAN_Planner"]
 	path = ros1_ws/src/CoHAN_Planner
 	url = https://github.com/sphanit/CoHAN_Planner
+[submodule "ros2_ws/src/multi_person_tracker_interfaces"]
+	path = ros2_ws/src/multi_person_tracker_interfaces
+	url = git@github.com:Tristan9497/multi_person_tracker_interfaces.git
