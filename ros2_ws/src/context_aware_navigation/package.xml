@@ -8,14 +8,19 @@
   <license>TODO: License declaration</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <!-- <buildtool_depend>ament_cmake_python</buildtool_depend> -->
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
 
-  <exec_depend>rclcpp</exec_depend>
+
+  <build_depend>rclcpp</build_depend>
+  <build_depend>rclpy</build_depend>
   <build_depend>nav2_common</build_depend>
-
   <build_depend>navigation2</build_depend>
   <build_depend>launch_ros</build_depend>
+  <build_depend>multi_person_tracker_interfaces</build_depend>
 
+  <exec_depend>multi_person_tracker_interfaces</exec_depend>
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>rclpy</exec_depend>
   <exec_depend>launch_ros</exec_depend>
   <exec_depend>navigation2</exec_depend>
   <exec_depend>nav2_common</exec_depend>

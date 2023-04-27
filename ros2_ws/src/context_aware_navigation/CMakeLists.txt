@@ -7,11 +7,12 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
 find_package(nav2_common REQUIRED)
 find_package(navigation2 REQUIRED)
-# find_package(ament_cmake_python REQUIRED)
-find_package(rclcpp REQUIRED)
-# find_package(rclpy REQUIRED)
+find_package(multi_person_tracker_interfaces)
 
 # Include cpp "include" directory
 include_directories(include)
@@ -26,13 +27,13 @@ include_directories(include)
 # )
 
 # Install python modules
-# ament_python_install_package(${PROJECT_NAME})
+ament_python_install_package(${PROJECT_NAME})
 
 # Install python executables
-# install(PROGRAMS
-#   scripts/py_node.py
-#   DESTINATION lib/${PROJECT_NAME}
-# )
+install(PROGRAMS
+  scripts/social_map_generator.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 install(DIRECTORY
   launch
