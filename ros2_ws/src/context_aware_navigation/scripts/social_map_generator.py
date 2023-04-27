@@ -53,8 +53,13 @@ class SocialMapGenerator(Node):
             if abs(X) < self.center[0] or abs(Y) < self.center[1]:
                 X = np.floor(X + self.center[0])
                 Y = np.floor(Y + self.center[1])
-                # TODO draw distribution onto map
-                social_zone = rotate(LUT, person.position.z, reshape=True)
+                # rotate LUT result for specific velocity
+                vel = (person.velocity.x*person.velocity.x +
+                       person.velocity.y*person.velocity.y)**0.5
+
+                social_zone = rotate(
+                    LUT(vel), person.position.z, reshape=True)
+
                 (width, height) = np.shape(social_zone)
                 social_map[X-width:X+width, Y-height:Y +
                            height] = np.maximum(social_map[X-width:X+width, Y-height:Y +
