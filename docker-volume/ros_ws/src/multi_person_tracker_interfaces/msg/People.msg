@@ -1,2 +1,0 @@
-std_msgs/Header header
-multi_person_tracker_interfaces/Person[] people

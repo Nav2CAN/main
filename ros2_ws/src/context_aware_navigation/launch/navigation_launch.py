@@ -108,7 +108,6 @@ def generate_launch_description():
         description='log level')
 
     load_nodes = GroupAction(
-        condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
             SetParameter('use_sim_time', use_sim_time),
             Node(
@@ -119,7 +118,7 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings + [('pr2/cmd_vel', 'cmd_vel_nav')]),
+                remappings=remappings + [('/cmd_vel', 'cmd_vel_nav')]),
             Node(
                 package='nav2_smoother',
                 executable='smoother_server',
@@ -149,7 +148,8 @@ def generate_launch_description():
                 respawn_delay=2.0,
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
-                remappings=remappings),
+                remappings=remappings +
+                        [('cmd_vel', 'pr2/cmd_vel')]),
             Node(
                 package='nav2_bt_navigator',
                 executable='bt_navigator',
@@ -180,7 +180,7 @@ def generate_launch_description():
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
                 remappings=remappings +
-                        [('pr2/cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'pr2/cmd_vel')]),
+                        [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'pr2/cmd_vel')]),
             Node(
                 package='nav2_lifecycle_manager',
                 executable='lifecycle_manager',
@@ -191,68 +191,6 @@ def generate_launch_description():
                             {'node_names': lifecycle_nodes}]),
         ]
     )
-
-    load_composable_nodes = GroupAction(
-        condition=IfCondition(use_composition),
-        actions=[
-            SetParameter('use_sim_time', use_sim_time),
-            LoadComposableNodes(
-                target_container=container_name_full,
-                composable_node_descriptions=[
-                    ComposableNode(
-                        package='nav2_controller',
-                        plugin='nav2_controller::ControllerServer',
-                        name='controller_server',
-                        parameters=[configured_params],
-                        remappings=remappings + [('cmd_vel', 'cmd_vel_nav')]),
-                    ComposableNode(
-                        package='nav2_smoother',
-                        plugin='nav2_smoother::SmootherServer',
-                        name='smoother_server',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                    ComposableNode(
-                        package='nav2_planner',
-                        plugin='nav2_planner::PlannerServer',
-                        name='planner_server',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                    ComposableNode(
-                        package='nav2_behaviors',
-                        plugin='behavior_server::BehaviorServer',
-                        name='behavior_server',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                    ComposableNode(
-                        package='nav2_bt_navigator',
-                        plugin='nav2_bt_navigator::BtNavigator',
-                        name='bt_navigator',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                    ComposableNode(
-                        package='nav2_waypoint_follower',
-                        plugin='nav2_waypoint_follower::WaypointFollower',
-                        name='waypoint_follower',
-                        parameters=[configured_params],
-                        remappings=remappings),
-                    ComposableNode(
-                        package='nav2_velocity_smoother',
-                        plugin='nav2_velocity_smoother::VelocitySmoother',
-                        name='velocity_smoother',
-                        parameters=[configured_params],
-                        remappings=remappings +
-                                [('cmd_vel', 'cmd_vel_nav'), ('cmd_vel_smoothed', 'cmd_vel')]),
-                    ComposableNode(
-                        package='nav2_lifecycle_manager',
-                        plugin='nav2_lifecycle_manager::LifecycleManager',
-                        name='lifecycle_manager_navigation',
-                        parameters=[{'autostart': autostart,
-                                    'node_names': lifecycle_nodes}]),
-                ],
-            )
-        ]
-    )
-
     # Create the launch description and populate
     ld = LaunchDescription()
 
@@ -270,6 +208,5 @@ def generate_launch_description():
     ld.add_action(declare_log_level_cmd)
     # Add the actions to launch all of the navigation nodes
     ld.add_action(load_nodes)
-    ld.add_action(load_composable_nodes)
 
     return ld
