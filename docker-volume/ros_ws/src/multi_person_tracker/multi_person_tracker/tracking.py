@@ -219,13 +219,22 @@ class PeopleTracker(object):
         self.debug = debug
         self.tracklets = []
 
-    def predict(self):
+    def predict(self,timestamp):
+        popCounter=0
+            # remove tracklet if it hasn't been updated in too long
+        for i in range(len(self.tracklets)):
+            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
+                print("popped")
+                self.tracklets.pop(i-popCounter)
+                popCounter += 1
+                
         # perform prediction with the Kalman filter
         for person in self.tracklets:
             person.predict()
 
     def update(self, detections, timestamp):
         # update the tracklets with new detections
+
         updates = self.MunkresTrack(
             detections, self.tracklets, timestamp)
         for update in updates:
@@ -273,13 +282,6 @@ class PeopleTracker(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-        popCounter = 0
-
-        # remove tracklet if it hasn't been updated in too long
-        for i in range(len(self.tracklets)):
-            if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
-                self.tracklets.pop(i-popCounter)
-                popCounter += 1
 
         if len(tracklets):
             indexes = self.MunkresDistances(
