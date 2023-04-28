@@ -101,7 +101,7 @@ class MultiPersonTracker(Node):
             self.publishPoseArrows(self.people_tracker.tracklets)
         if self.publishKeypointsMsg:
             self.publishKeypoints(self.people_tracker.tracklets)
-        self.people_tracker.predict()
+        self.people_tracker.predict(self.get_clock().now().nanoseconds)
 
     def publishPoseArrows(self, people):
         # Set the scale of the marker
@@ -212,7 +212,7 @@ class MultiPersonTracker(Node):
                 10)
 
         def rgb_callback(self, msg):
-            # try:
+            try:
                 # conversions
                 self.rgb = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
@@ -289,10 +289,10 @@ class MultiPersonTracker(Node):
                                 self.tracker.peopleCount += len(
                                     kpPersons)
                                 self.tracker.saveImage(self.cudaimage)
-            # except Exception as e:
-            #     if self.debug:
-            #         print(f"Exception on rgb_callback")
-            #         print(e)
+            except Exception as e:
+                if self.debug:
+                    print(f"Exception on rgb_callback")
+                    print(e)
 
         def depth_callback(self, msg):
             # get and update depth image
