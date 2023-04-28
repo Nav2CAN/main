@@ -13,6 +13,7 @@ find_package(rclpy REQUIRED)
 find_package(nav2_common REQUIRED)
 find_package(navigation2 REQUIRED)
 find_package(multi_person_tracker_interfaces)
+find_package(sensor_msgs)
 
 # Include cpp "include" directory
 include_directories(include)

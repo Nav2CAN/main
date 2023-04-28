@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
 
@@ -11,6 +12,8 @@ import numpy as np
 from numba import jit
 from scipy.ndimage import rotate
 from multi_person_tracker_interfaces.msg import People, Person
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 
 class SocialMapGenerator(Node):
@@ -27,6 +30,10 @@ class SocialMapGenerator(Node):
         self.socialZones = []
         self.velocities = np.arange(0, 1.5, 0.1)
         self.center = ((width*density)/2, (height*density)/2)
+        self.socialMap = None
+
+        self.publisher_ = self.create_publisher(String, 'social_map', 10)
+        self.cvBridge = CvBridge()
         self.people_sub = self.create_subscription(
             People,
             'people',
@@ -68,10 +75,11 @@ class SocialMapGenerator(Node):
                     self.socialZones(idx), person.position.z, reshape=True)
 
                 (width, height) = np.shape(social_zone)
-                social_map[X-width:X+width, Y-height:Y +
-                           height] = np.maximum(social_map[X-width:X+width, Y-height:Y +
-                                                           height], social_zone)
-            # TODO publish map
+                self.socialMap[X-width:X+width, Y-height:Y +
+                               height] = np.maximum(self.socialMap[X-width:X+width, Y-height:Y +
+                                                                   height], social_zone)
+                self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
+                    self.socialMap, encoding="passthrough"))
 
     def initSocialZones(self):
 
@@ -104,7 +112,7 @@ class SocialMapGenerator(Node):
 
     @jit(nopython=True)
     def makeProxemicZone(self, x0, y0, x, y, theta, sigmaFront, sigmaSide, sigmaBack) -> np.ndarray:
-        social = np.zeros((len(x), len(y)))
+        social = np.zeros((len(x), len(y)), dtype=np.uint8)
         for i in range(len(x)):
             for j in range(len(y)):
                 social[j, i] = self.thresholdCost(self.asymetricGaus(
@@ -116,7 +124,7 @@ class SocialMapGenerator(Node):
         if cost > self.asymetricGaus(y=0.5):
             return 255
         if cost > self.asymetricGaus(y=1.0):
-            return 255*self.asymetricGaus(y=1.0)
+            return np.floor(255*self.asymetricGaus(y=1.0))
         if cost > self.asymetricGaus(y=1.5):
             return cost*255
         return 0
@@ -125,7 +133,7 @@ class SocialMapGenerator(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator()
+    social_map_generator = SocialMapGenerator(3, 3, 0.05)
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()
