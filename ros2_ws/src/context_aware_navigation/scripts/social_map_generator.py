@@ -27,12 +27,15 @@ class SocialMapGenerator(Node):
         self.sigmaFront = 2
         self.sigmaSide = 4/3
         self.sigmaBack = 1
-        self.socialZones = []
         self.velocities = np.arange(0, 1.5, 0.1)
+        self.socialZones = []
+        self.plotsize = 3
+        self.initSocialZones(3)
+
         self.center = ((width*density)/2, (height*density)/2)
         self.socialMap = None
 
-        self.publisher_ = self.create_publisher(String, 'social_map', 10)
+        self.publisher_ = self.create_publisher(Image, 'social_map', 10)
         self.cvBridge = CvBridge()
         self.people_sub = self.create_subscription(
             People,
@@ -44,13 +47,12 @@ class SocialMapGenerator(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self.people_sub  # prevent unused variable warning
 
-    @jit(nopython=True)
     def people_callback(self, msg: People):
         # get the latest transform between the robot and the map
         try:
             t = self.tf_buffer.lookup_transform(
-                "pr2/base_link",
-                "map",
+                "camera1_link",
+                "camera1_link",
                 rclpy.time.Time())
         except TransformException as ex:
             self.get_logger().info(
@@ -58,68 +60,84 @@ class SocialMapGenerator(Node):
             return
 
         self.socialMap = np.zeros(
-            (self.height*self.density, self.width*self.density), np.float32)
-
+            (round(self.height*5/self.density), round(self.width*5/self.density)), np.float32)
+        self.center = (np.shape(self.socialMap)[
+                       0]/2, np.shape(self.socialMap)[1]/2)  # [px]
         for person in msg.people:
             # make the person position relative to the non rotating robot
-            X = (person.position.x - t.transform.translation.x)*self.density
-            Y = (person.position.y - t.transform.translation.y)*self.density
+            X = int(np.floor((person.position.x - t.transform.translation.x) /
+                             self.density))  # [px]
+            Y = int(
+                np.floor((person.position.y - t.transform.translation.y) / self.density))
             if abs(X) < self.center[0] or abs(Y) < self.center[1]:
-                X = np.floor(X + self.center[0])
-                Y = np.floor(Y + self.center[1])
+                # transform relative to the top left corner of the map
+                X = int(np.floor((X + self.center[0])))
+                Y = int(np.floor((Y + self.center[1])))
                 # rotate LUT result for specific velocity
                 vel = (person.velocity.x*person.velocity.x +
                        person.velocity.y*person.velocity.y)**0.5
                 idx = (np.abs(self.velocities - vel)).argmin()
                 social_zone = rotate(
-                    self.socialZones(idx), person.position.z, reshape=True)
+                    self.socialZones[idx], np.rad2deg(person.position.z), reshape=True)
 
-                (width, height) = np.shape(social_zone)
-                self.socialMap[X-width:X+width, Y-height:Y +
-                               height] = np.maximum(self.socialMap[X-width:X+width, Y-height:Y +
-                                                                   height], social_zone)
+                (width, height) = np.shape(self.socialZones[0])
+                width = int(np.floor(width/2))
+                height = int(np.floor(height/2))
+
+                minx = max(0, X-width)
+                maxx = min(np.shape(self.socialMap)[0], X+width)
+                miny = max(0, Y-height)
+                maxy = min(np.shape(self.socialMap)[1], Y+width)
+
+                roi = self.socialMap[minx:maxx, miny:maxy]
+
+                sminx = width - min(width, X)
+                sminy = height - min(height, Y)
+                smaxx = width + min(width, np.shape(self.socialMap)[0]-X)
+                smaxy = height + min(height, np.shape(self.socialMap)[1]-Y)
+
+                social_zone = social_zone[sminx:smaxx, sminy:smaxy]
+                self.socialMap[minx:maxx, miny:maxy] = np.maximum(
+                    roi, social_zone)
                 self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
                     self.socialMap, encoding="passthrough"))
 
-    def initSocialZones(self):
-
-        plotsize = 3
-        # %create canvas
-        # shift x by 1 meter
-        x = np.arange(plotsize+1, plotsize+1, self.density)
-        y = np.arange(plotsize, plotsize, self.density)
-
+    @jit
+    def initSocialZones(self, plotsize=3):
+        x = np.arange(-plotsize+1, plotsize+1, self.density)  # [m]
+        y = np.arange(-plotsize, plotsize, self.density)
         for vel in self.velocities:
             self.socialZones.append(self.makeProxemicZone(
                 0, 0, x, y, 0, self.sigmaFront+vel, self.sigmaSide, self.sigmaBack))
+        print("DONE")
 
-    @jit(nopython=True)
+    @jit
     def asymetricGaus(self, x=0, y=0, x0=0, y0=0, theta=0, sigmaFront=2, sigmaSide=4/3, sigmaBack=1) -> float:
-        angle = np.mod(np.arctan2(y-y0, x-x0), 2*np.pi)+theta
+        angle: float = np.mod(np.arctan2(y-y0, x-x0), 2*np.pi)+theta
         if (abs(angle) >= np.pi/2 and abs(angle) <= np.pi+np.pi/2):
-            sigma = sigmaBack
+            sigma: float = sigmaBack
         else:
-            sigma = sigmaFront
+            sigma: float = sigmaFront
 
-        a = ((np.cos(theta) ** 2)/(2*sigma ** 2)) + \
+        a: float = ((np.cos(theta) ** 2)/(2*sigma ** 2)) + \
             ((np.sin(theta) ** 2)/(2*sigmaSide ** 2))
-        b = (np.sin(2*theta)/(4*sigma ** 2)) - \
+        b: float = (np.sin(2*theta)/(4*sigma ** 2)) - \
             (np.sin(2*theta)/(4*sigmaSide ** 2))
-        c = ((np.sin(theta) ** 2)/(2*sigma ** 2)) + \
+        c: float = ((np.sin(theta) ** 2)/(2*sigma ** 2)) + \
             ((np.cos(theta) ** 2)/(2*sigmaSide ** 2))
 
         return np.exp(-(a*(x-x0) ** 2+2*b*(x-x0)*(y-y0)+c*(y-y0) ** 2))
 
-    @jit(nopython=True)
+    @jit
     def makeProxemicZone(self, x0, y0, x, y, theta, sigmaFront, sigmaSide, sigmaBack) -> np.ndarray:
-        social = np.zeros((len(x), len(y)), dtype=np.uint8)
+        social: np.ndarray = np.zeros((len(x), len(y)), dtype=np.uint8)
         for i in range(len(x)):
             for j in range(len(y)):
                 social[j, i] = self.thresholdCost(self.asymetricGaus(
                     x[i], y[j], x0, y0, theta, sigmaFront))
         return social
 
-    @jit(nopython=True)
+    @jit
     def thresholdCost(self, cost: float) -> float:
         if cost > self.asymetricGaus(y=0.5):
             return 255
@@ -133,7 +151,7 @@ class SocialMapGenerator(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator(3, 3, 0.05)
+    social_map_generator = SocialMapGenerator(3, 3, 0.1)
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()
