@@ -89,18 +89,18 @@ class SocialMapGenerator(Node):
                 miny = max(0, Y-height)
                 maxy = min(np.shape(self.socialMap)[1], Y+width)
 
-                roi = self.socialMap[minx:maxx, miny:maxy]
+                roi = self.socialMap[miny:maxy, minx:maxx]
 
                 sminx = width - min(width, X)
                 sminy = height - min(height, Y)
                 smaxx = width + min(width, np.shape(self.socialMap)[0]-X)
                 smaxy = height + min(height, np.shape(self.socialMap)[1]-Y)
 
-                social_zone = social_zone[sminx:smaxx, sminy:smaxy]
-                self.socialMap[minx:maxx, miny:maxy] = np.maximum(
+                social_zone = social_zone[sminy:smaxy, sminx:smaxx]
+                self.socialMap[miny:maxy, minx:maxx] = np.maximum(
                     roi, social_zone)
-                self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
-                    self.socialMap, encoding="passthrough"))
+        self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
+            self.socialMap, encoding="passthrough"))
 
     @jit
     def initSocialZones(self, plotsize=3):
