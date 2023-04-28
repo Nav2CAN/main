@@ -57,7 +57,7 @@ class SocialMapGenerator(Node):
                 f'Could not transform base_link to map: {ex}')
             return
 
-        social_map = np.zeros(
+        self.socialMap = np.zeros(
             (self.height*self.density, self.width*self.density), np.float32)
 
         for person in msg.people:
