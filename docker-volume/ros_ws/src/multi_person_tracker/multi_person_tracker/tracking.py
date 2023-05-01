@@ -252,8 +252,8 @@ class PeopleTracker(object):
             for detection in detections:
                 newPosX = detection.x
                 newPosY = detection.y
-                dist = float(np.hypot((newPosX - currentPosX),
-                             (newPosY - currentPosY)))
+                dist = (float(newPosX - currentPosX)**2 + 
+                             float(newPosY - currentPosY)**2)**0.5
                 dists.append(dist)
             distances.append(dists)
         distMat = np.array(distances)
@@ -274,7 +274,6 @@ class PeopleTracker(object):
                             keypoints=detections[i - popCounter].keypoints))
                     detections.pop(i - popCounter)
                     distMat = np.delete(distMat, i-popCounter, 0)
-                    print(np.shape(distMat))
                     popCounter += 1
         # Find shortest distance
         self.indexes = linear_sum_assignment(distMat)
@@ -282,7 +281,7 @@ class PeopleTracker(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-
+        popCounter=0
         if len(tracklets):
             indexes = self.MunkresDistances(
                 detections, tracklets, timestamp)
@@ -297,18 +296,18 @@ class PeopleTracker(object):
 
                 # assign all found assignments
                 for index in zip(indexes[0], indexes[1]):
-                    tracklets[index[0]].measX = detections[index[1]].x
-                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]].measX = detections[index[1]-popCounter].x
+                    tracklets[index[0]].measY = detections[index[1]-popCounter].y
                     tracklets[index[0]
-                              ].measTheta = detections[index[1]].orientation
+                              ].measTheta = detections[index[1]-popCounter].orientation
                     tracklets[index[0]].measTimestamp = timestamp
                     tracklets[index[0]
-                              ].measWithTheta = detections[index[1]].withTheta
+                              ].measWithTheta = detections[index[1]-popCounter].withTheta
                     tracklets[index[0]
-                              ].keypoints = detections[index[1]].keypoints
+                              ].keypoints = detections[index[1]-popCounter].keypoints
                     updates.append(index[0])
-                    detections.pop(index[1])  # pop every assigned detection
-
+                    detections.pop(index[1]-popCounter)  # pop every assigned detection
+                    popCounter+=1
         # append the remaining detections as new KF's
         for detection in detections:
             tracklets.append(

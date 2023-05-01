@@ -112,6 +112,12 @@ class person_keypoint:
         if (self.left_hip and self.right_hip):
             self.getOrientationFromPoints(self.left_hip, self.right_hip)
             return
+        if (self.left_hip or self.left_shoulder):
+            self.orientation = np.pi/2
+            return
+        if (self.right_hip or self.right_shoulder):
+            self.orientation = 3*np.pi/2
+            return
         self.withTheta = False
 
     def getOrientationFromPoints(self, left: keypoint, right: keypoint):
