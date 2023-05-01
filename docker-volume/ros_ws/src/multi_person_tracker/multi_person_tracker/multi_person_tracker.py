@@ -22,9 +22,8 @@ from multi_person_tracker_interfaces.msg import People, Person
 from .tracking import PeopleTracker, Detection
 
 
-
 class MultiPersonTracker(Node):
-    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt = 0.1, n_cameras = 2, newTrack = 3, keeptime = 5, target_frame: str = "map", debug: bool = False):
+    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=5, target_frame: str = "map", debug: bool = False):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
@@ -44,7 +43,8 @@ class MultiPersonTracker(Node):
 
         super().__init__('multi_person_tracker')
         self.create_timer(dt, self.timer_callback)
-        self.people_tracker = PeopleTracker(newTrack = newTrack, keeptime = keeptime, dt = dt, debug = debug)
+        self.people_tracker = PeopleTracker(
+            newTrack=newTrack, keeptime=keeptime, dt=dt, debug=debug)
         self.people_publisher = self.create_publisher(People, 'people', 10)
         self.people_arrow_publisher = self.create_publisher(
             MarkerArray, 'people_arrows', 10)
@@ -72,6 +72,7 @@ class MultiPersonTracker(Node):
         self.output = videoOutput(self.output_location, argv=[
             os.path.basename(__file__)])
 
+        self.detectionMergingThreshold = 0.25
         # Initialize camera objects with propper namespacing
         if n_cameras > 1:
             self.cameras = [self.Camera(self, namespace="camera"+str(i+1))
@@ -242,14 +243,15 @@ class MultiPersonTracker(Node):
                         for person in kpPersons:
                             if person.x != None and person.y != None:
                                 if self.tracker.publishKeypoints:
-                                    keypoints=[]
+                                    keypoints = []
                                     for kp in person.keypoints:
                                         if kp.x and kp.y and kp.z:
                                             point = PointStamped()
                                             point.point.x = float(kp.x)
                                             point.point.y = float(kp.y)
                                             point.point.z = float(kp.z)
-                                            point = tf2_geometry_msgs.do_transform_point(point, trans)
+                                            point = tf2_geometry_msgs.do_transform_point(
+                                                point, trans)
                                             keypoints.append(point)
                                 # transformation to target_frame
                                 pose.position.x = float(person.x)
@@ -272,12 +274,24 @@ class MultiPersonTracker(Node):
                                 ]
                                 angle = euler_from_quaternion(quad)[2]
                                 angle = angle if angle > 0 else angle+2*np.pi
-                                if self.tracker.publishKeypoints:
-                                    detections.append(
-                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
-                                else:
-                                    detections.append(
-                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta))
+
+                                merged: bool = False
+                                for detection in detections:
+                                    if ((detection.x - pose.position.x)**2 + (detection.y - pose.position.y))**0.5 < self.tracker.detectionMergingThreshold:
+                                        detection.x = (
+                                            detection.x+pose.position.x)/2
+                                        detection.y = (
+                                            detection.y+pose.position.y)/2
+                                        detection.orientation = (
+                                            detection.orientation+angle)/2
+                                        merged = True
+                                if not merged:
+                                    if self.tracker.publishKeypoints:
+                                        detections.append(
+                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
+                                    else:
+                                        detections.append(
+                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                         # Update tracker with new detections
                         if len(detections):
                             self.tracker.people_tracker.update(
@@ -337,7 +351,7 @@ def main(args=None):
     rclpy.init(args=args)
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(publishKeypoints=False,
-        dt=0.02, target_frame="camera1_link", debug=True)
+                                              dt=0.02, target_frame="camera1_link", debug=False)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
