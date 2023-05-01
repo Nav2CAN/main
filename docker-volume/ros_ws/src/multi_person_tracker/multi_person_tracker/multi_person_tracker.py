@@ -229,7 +229,14 @@ class MultiPersonTracker(Node):
                 # generate 3D coordinates for all keypoints and calculate x,y,theta
                 if poses:
                     kpPersons = self.generatePeople(poses)
-
+                    z = np.array([complex(p.x, p.y) for p in kpPersons])
+                    distanceMatrix = np.where(np.tril(abs(z.T-z))<self.tracker.detectionMergingThreshold and np.tril(abs(z.T-z))>0)
+                    for i,detection in enumerate(distanceMatrix[0]):
+                        kpPersons[detection].x = (kpPersons[detection].x + kpPersons[distanceMatrix[1][i]].x)/2
+                        kpPersons[detection].y = (kpPersons[detection].y + kpPersons[distanceMatrix[1][i]].y)/2
+                        kpPersons[detection].orientation = (kpPersons[detection].orientation + kpPersons[distanceMatrix[1][i]].orientation)/2
+                        kpPersons.pop(distanceMatrix[1][i])
+                        print("removed double detection")
                     # make detection objects
                     detections = []
                     trans = None
@@ -275,23 +282,13 @@ class MultiPersonTracker(Node):
                                 angle = euler_from_quaternion(quad)[2]
                                 angle = angle if angle > 0 else angle+2*np.pi
 
-                                merged: bool = False
-                                for detection in detections:
-                                    if ((detection.x - pose.position.x)**2 + (detection.y - pose.position.y))**0.5 < self.tracker.detectionMergingThreshold:
-                                        detection.x = (
-                                            detection.x+pose.position.x)/2
-                                        detection.y = (
-                                            detection.y+pose.position.y)/2
-                                        detection.orientation = (
-                                            detection.orientation+angle)/2
-                                        merged = True
-                                if not merged:
-                                    if self.tracker.publishKeypoints:
-                                        detections.append(
-                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
-                                    else:
-                                        detections.append(
-                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta))
+
+                                if self.tracker.publishKeypoints:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
+                                else:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta))
                         # Update tracker with new detections
                         if len(detections):
                             self.tracker.people_tracker.update(
