@@ -273,11 +273,7 @@ class PeopleTracker(object):
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
         popCounter=0
-        
-        print(tracklets)
-        print(len(tracklets))
         if len(tracklets):
-            print("moin")
             indexes = self.MunkresDistances(
                 detections, tracklets, timestamp)
             if len(detections):  # check again since we might have popped one
