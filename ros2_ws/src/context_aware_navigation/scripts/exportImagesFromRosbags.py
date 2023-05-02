@@ -40,13 +40,14 @@ class BagFileParser():
 
 if __name__ == "__main__":
 
-    bag_file = '/home/tristan/repositories/master-thesis/ros2_ws/3m_mark_multiple_interactions/3m_mark_multiple_interactions_0.db3'
+    bag_file = '/home/tristan/repositories/master-thesis/ros2_ws/test_bag/test_bag_0.db3'
 
     parser = BagFileParser(bag_file)
     cvbridge = CvBridge()
     # people = parser.get_messages("/people")
     social_map_msgs = parser.get_messages("/social_map")
     path = dirname = os.path.dirname(bag_file)
+    os.mkdir(os.path.join(path, "images"))
     for i, msg in enumerate(social_map_msgs):
         image = cvbridge.imgmsg_to_cv2(msg[1])
         cv2.imwrite(os.path.join(path, "images",
