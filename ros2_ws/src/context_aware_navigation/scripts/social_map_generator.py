@@ -2,16 +2,13 @@
 import rclpy
 from rclpy.node import Node
 
-from std_msgs.msg import String
-
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
 import numpy as np
-from numba import jit
 from scipy.ndimage import rotate
-from multi_person_tracker_interfaces.msg import People, Person
+from multi_person_tracker_interfaces.msg import People
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 from context_aware_navigation.asymetricGausian import *
