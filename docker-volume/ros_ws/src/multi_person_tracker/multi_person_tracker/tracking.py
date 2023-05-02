@@ -1,7 +1,6 @@
 import numpy as np
 from scipy.optimize import linear_sum_assignment
-
-
+from scipy.spatial.distance import cdist
 class Detection:
     def __init__(self, x: float, y: float, orientation: float, withTheta: bool = True, keypoints: list = []):
         self.x = x
@@ -224,7 +223,8 @@ class PeopleTracker(object):
             # remove tracklet if it hasn't been updated in too long
         for i in range(len(self.tracklets)):
             if abs(timestamp-self.tracklets[i-popCounter].timestamp)*1e-9 > self.keeptime:
-                print("popped")
+                if self.debug:
+                    print("popped segment for being too old")
                 self.tracklets.pop(i-popCounter)
                 popCounter += 1
                 
@@ -234,7 +234,6 @@ class PeopleTracker(object):
 
     def update(self, detections, timestamp):
         # update the tracklets with new detections
-
         updates = self.MunkresTrack(
             detections, self.tracklets, timestamp)
         for update in updates:
@@ -242,22 +241,14 @@ class PeopleTracker(object):
 
     def MunkresDistances(self, detections, tracklets, timestamp):
         # Calculate distances between objects and detections and save shortest
-        distances = []
         popCounter = 0
-
+        tracklet_pos=[]
+        detection_pos=[]
         for person in tracklets:
-            currentPosX = person.personX
-            currentPosY = person.personY
-            dists = []
-            for detection in detections:
-                newPosX = detection.x
-                newPosY = detection.y
-                dist = float(np.hypot((newPosX - currentPosX),
-                             (newPosY - currentPosY)))
-                dists.append(dist)
-            distances.append(dists)
-        distMat = np.array(distances)
-
+            tracklet_pos.append((float(person.personX),float(person.personY)))
+        for detection in detections:
+            detection_pos.append((float(detection.x),float(detection.y)))
+        distMat = cdist(tracklet_pos,detection_pos,metric="euclidean")
         # if detection is too far away pop it and create new KF for it
         mins = distMat.min(axis=0)
         if np.any(mins > self.newTrack):
@@ -274,7 +265,6 @@ class PeopleTracker(object):
                             keypoints=detections[i - popCounter].keypoints))
                     detections.pop(i - popCounter)
                     distMat = np.delete(distMat, i-popCounter, 0)
-                    print(np.shape(distMat))
                     popCounter += 1
         # Find shortest distance
         self.indexes = linear_sum_assignment(distMat)
@@ -282,7 +272,7 @@ class PeopleTracker(object):
 
     def MunkresTrack(self, detections, tracklets, timestamp):
         updates = []
-
+        popCounter=0
         if len(tracklets):
             indexes = self.MunkresDistances(
                 detections, tracklets, timestamp)
@@ -297,18 +287,18 @@ class PeopleTracker(object):
 
                 # assign all found assignments
                 for index in zip(indexes[0], indexes[1]):
-                    tracklets[index[0]].measX = detections[index[1]].x
-                    tracklets[index[0]].measY = detections[index[1]].y
+                    tracklets[index[0]].measX = detections[index[1]-popCounter].x
+                    tracklets[index[0]].measY = detections[index[1]-popCounter].y
                     tracklets[index[0]
-                              ].measTheta = detections[index[1]].orientation
+                              ].measTheta = detections[index[1]-popCounter].orientation
                     tracklets[index[0]].measTimestamp = timestamp
                     tracklets[index[0]
-                              ].measWithTheta = detections[index[1]].withTheta
+                              ].measWithTheta = detections[index[1]-popCounter].withTheta
                     tracklets[index[0]
-                              ].keypoints = detections[index[1]].keypoints
+                              ].keypoints = detections[index[1]-popCounter].keypoints
                     updates.append(index[0])
-                    detections.pop(index[1])  # pop every assigned detection
-
+                    detections.pop(index[1]-popCounter)  # pop every assigned detection
+                    popCounter+=1
         # append the remaining detections as new KF's
         for detection in detections:
             tracklets.append(

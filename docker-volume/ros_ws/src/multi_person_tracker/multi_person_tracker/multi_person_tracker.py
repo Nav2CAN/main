@@ -72,7 +72,7 @@ class MultiPersonTracker(Node):
         self.output = videoOutput(self.output_location, argv=[
             os.path.basename(__file__)])
 
-        self.detectionMergingThreshold = 0.25
+        self.detectionMergingThreshold = 0.4
         # Initialize camera objects with propper namespacing
         if n_cameras > 1:
             self.cameras = [self.Camera(self, namespace="camera"+str(i+1))
@@ -229,7 +229,17 @@ class MultiPersonTracker(Node):
                 # generate 3D coordinates for all keypoints and calculate x,y,theta
                 if poses:
                     kpPersons = self.generatePeople(poses)
-
+                    z = np.array([[complex(p.x, p.y) for p in kpPersons]])
+                    popCounter=0
+                    distanceMatrix=abs(z.T-z)
+                    distanceMatrix = np.where(np.logical_and(0 < distanceMatrix, distanceMatrix < self.tracker.detectionMergingThreshold))
+                    for i,detection in enumerate(distanceMatrix[0]):
+                        kpPersons[detection-popCounter].x = (kpPersons[detection-popCounter].x + kpPersons[distanceMatrix[1][i]-popCounter].x)/2
+                        kpPersons[detection-popCounter].y = (kpPersons[detection-popCounter].y + kpPersons[distanceMatrix[1][i]-popCounter].y)/2
+                        kpPersons[detection-popCounter].orientation = (kpPersons[detection-popCounter].orientation + kpPersons[distanceMatrix[1][i]-popCounter].orientation)/2
+                        kpPersons.pop(distanceMatrix[1][i]-popCounter)
+                        popCounter+=1
+                        if self.debug: print("removed double detection")
                     # make detection objects
                     detections = []
                     trans = None
@@ -241,7 +251,7 @@ class MultiPersonTracker(Node):
                     if trans:
                         pose = Pose()
                         for person in kpPersons:
-                            if person.x != None and person.y != None:
+                            try:
                                 if self.tracker.publishKeypoints:
                                     keypoints = []
                                     for kp in person.keypoints:
@@ -275,23 +285,15 @@ class MultiPersonTracker(Node):
                                 angle = euler_from_quaternion(quad)[2]
                                 angle = angle if angle > 0 else angle+2*np.pi
 
-                                merged: bool = False
-                                for detection in detections:
-                                    if ((detection.x - pose.position.x)**2 + (detection.y - pose.position.y))**0.5 < self.tracker.detectionMergingThreshold:
-                                        detection.x = (
-                                            detection.x+pose.position.x)/2
-                                        detection.y = (
-                                            detection.y+pose.position.y)/2
-                                        detection.orientation = (
-                                            detection.orientation+angle)/2
-                                        merged = True
-                                if not merged:
-                                    if self.tracker.publishKeypoints:
-                                        detections.append(
-                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
-                                    else:
-                                        detections.append(
-                                            Detection(pose.position.x, pose.position.y, angle, person.withTheta))
+
+                                if self.tracker.publishKeypoints:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta, keypoints))
+                                else:
+                                    detections.append(
+                                        Detection(pose.position.x, pose.position.y, angle, person.withTheta))
+                            except np.linalg.LinAlgError:
+                                pass
                         # Update tracker with new detections
                         if len(detections):
                             self.tracker.people_tracker.update(
@@ -328,7 +330,8 @@ class MultiPersonTracker(Node):
             persons = []
             for pose in poses:
                 kpPerson = person_keypoint(pose.Keypoints, self.depth)
-                persons.append(kpPerson)
+                if kpPerson.x != None and kpPerson.y != None:
+                    persons.append(kpPerson)
             return persons
 
         def writing(self, orientation):
