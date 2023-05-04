@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from cv_bridge import CvBridge
 import cv2
 import os
+import time
 
 
 class BagFileParser():
@@ -39,16 +40,31 @@ class BagFileParser():
 
 
 if __name__ == "__main__":
+    start_time = time.time()
+    parent_folder = '/home/jonathan/Downloads/rosbags/'
 
-    bag_file = '/home/tristan/repositories/master-thesis/ros2_ws/test_bag/test_bag_0.db3'
+    files = ['3m_mark_multiple_interactions/3m_mark_multiple_interactions_0.db3',
+              '4m_mark_multiple_interactions/4m_mark_multiple_interactions_0.db3', 
+              '5m_mark_multiple_interactions/5m_mark_multiple_interactions_0.db3',
+              'movingtogether/movingtogether_0.db3',
+              'random_walking/random_walking_0.db3']
 
-    parser = BagFileParser(bag_file)
-    cvbridge = CvBridge()
-    # people = parser.get_messages("/people")
-    social_map_msgs = parser.get_messages("/social_map")
-    path = dirname = os.path.dirname(bag_file)
-    os.mkdir(os.path.join(path, "images"))
-    for i, msg in enumerate(social_map_msgs):
-        image = cvbridge.imgmsg_to_cv2(msg[1])
-        cv2.imwrite(os.path.join(path, "images",
-                    str(i).zfill(8)+".png"), image)
+    for file in files:
+
+        print(f"Exporting file: {file}")
+        bag_file = parent_folder + file
+
+        parser = BagFileParser(bag_file)
+        cvbridge = CvBridge()
+        # people = parser.get_messages("/people")
+        social_map_msgs = parser.get_messages("/social_map")
+        path = dirname = os.path.dirname(bag_file)
+        os.mkdir(os.path.join(path, "images"))
+        for i, msg in enumerate(social_map_msgs):
+            image = cvbridge.imgmsg_to_cv2(msg[1])
+            cv2.imwrite(os.path.join(path, "images",
+                        str(i).zfill(8)+".png"), image)
+
+    
+    
+    print(f"Finished exporting in {time.time()-start_time} seconds")
