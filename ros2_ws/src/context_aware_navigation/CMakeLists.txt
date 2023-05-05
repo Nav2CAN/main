@@ -17,11 +17,12 @@ find_package(multi_person_tracker_interfaces)
 find_package(sensor_msgs)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
-
+find_package(OpenCV REQUIRED)
 
 set(dep_pkgs
     rclcpp
     nav2_costmap_2d
+    OpenCV
     pluginlib)
 # Create cpp executables
 # add_executable(cpp_exe src/cpp_node.cpp)

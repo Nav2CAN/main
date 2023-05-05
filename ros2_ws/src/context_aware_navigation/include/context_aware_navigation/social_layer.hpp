@@ -46,7 +46,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "nav2_costmap_2d/layer.hpp"
 #include "nav2_costmap_2d/layered_costmap.hpp"
-
+#include "sensor_msgs/msg/image.hpp"
+#include "opencv4/opencv2/opencv.hpp"
+#include "cv_bridge/cv_bridge.h"
 namespace context_aware_navigation
 {
 
@@ -74,7 +76,9 @@ public:
 
   virtual bool isClearable() {return false;}
 
-private:
+  void imageCallback(
+      sensor_msgs::msg::Image::ConstSharedPtr message);
+protected:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   // Indicates that the entire gradient should be recalculated next time.
