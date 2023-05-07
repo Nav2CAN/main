@@ -194,7 +194,7 @@ class MultiPersonTracker(Node):
                 print("init camera")
 
             self.namespace = namespace
-            self.tfFrame = self.namespace+"_link"
+            self.tfFrame = self.namespace+"_color_frame"#TODO check if this is supposed to be "aligned_depth_to_color_frame"
             self.tf_buffer = tf2_ros.Buffer()
             self.tf_listener = tf2_ros.TransformListener(
                 self.tf_buffer, self.tracker)
