@@ -44,15 +44,23 @@
 #define SOCIAL_LAYER_HPP_
 
 #include "rclcpp/rclcpp.hpp"
+#include "nav_msgs/msg/occupancy_grid.hpp"
+
 #include "nav2_costmap_2d/layer.hpp"
 #include "nav2_costmap_2d/layered_costmap.hpp"
+#include "nav2_costmap_2d/costmap_layer.hpp"
+
 #include "sensor_msgs/msg/image.hpp"
 #include "opencv4/opencv2/opencv.hpp"
 #include "cv_bridge/cv_bridge.h"
+#include "tf2/exceptions.h"
+#include "tf2_ros/transform_listener.h"
+#include "tf2_ros/buffer.h"
+
 namespace context_aware_navigation
 {
 
-class SocialLayer : public nav2_costmap_2d::Layer
+class SocialLayer : public nav2_costmap_2d::CostmapLayer
 {
 public:
   SocialLayer();
@@ -76,13 +84,24 @@ public:
 
   virtual bool isClearable() {return false;}
 
-  void imageCallback(
+  virtual void imageCallback(
       sensor_msgs::msg::Image::ConstSharedPtr message);
+  virtual void rotateImage();
+
+
+
 protected:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   // Indicates that the entire gradient should be recalculated next time.
   bool need_recalculation_;
+  std::string target_frame;
+  std::string base_frame;
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener;
+
+  cv_bridge::CvImagePtr social_map;
+  std::shared_ptr<cv::Mat> social_map_rotated
 
   // Size of gradient in cells
   int GRADIENT_SIZE = 20;
