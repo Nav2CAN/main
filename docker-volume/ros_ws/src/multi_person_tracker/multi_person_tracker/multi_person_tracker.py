@@ -23,7 +23,7 @@ from .tracking import PeopleTracker, Detection
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=5, target_frame: str = "map", debug: bool = False):
+    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=1, target_frame: str = "map", debug: bool = False):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
@@ -72,7 +72,7 @@ class MultiPersonTracker(Node):
         self.output = videoOutput(self.output_location, argv=[
             os.path.basename(__file__)])
 
-        self.detectionMergingThreshold = 0.4
+        self.detectionMergingThreshold = 0.5
         # Initialize camera objects with propper namespacing
         if n_cameras > 1:
             self.cameras = [self.Camera(self, namespace="camera"+str(i+1))
