@@ -83,3 +83,4 @@ Vagrantfile
 *.png
 *.jpg
 .vscode/settings.json
+ros2_ws/traced_model.pt
