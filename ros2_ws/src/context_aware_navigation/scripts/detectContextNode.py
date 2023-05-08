@@ -1,10 +1,11 @@
-import argparse
+#!/usr/bin/env python3
 from pathlib import Path
 
 import torch
 import numpy as np
+import cv2
 
-from context_aware_navigation.models.experimental import attempt_load
+from models.experimental import attempt_load
 from context_aware_navigation.utils.datasets import letterbox
 from context_aware_navigation.utils.general import check_img_size, non_max_suppression, \
     scale_coords, xyxy2xywh, set_logging
@@ -15,6 +16,7 @@ import rclpy
 from rclpy.node import Node
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
+from std_msgs.msg import String
 
 class Detector(Node):
     '''
@@ -32,7 +34,7 @@ class Detector(Node):
     agnostic_nms: choose if the classes affect the IOU NMS
     device: choose compute device
     '''
-    def __init__(self, weights = 'yolov7-ContextNav.pt', img_size = 320, trace = True, 
+    def __init__(self, weights = '/home/jonathan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/yolov7-ContextNav.pt', img_size = 320, trace = True, 
                  augment = False, conf_thres = 0.25, iou_thres = 0.45,
                  classes = None, agnostic_nms = False, device = ''):
         self.weights, self.imgsz, self.trace =  weights, img_size, trace
@@ -68,21 +70,26 @@ class Detector(Node):
         #self.interaction_publisher = self.create_publisher(Interaction, 'interaction', 10) #TODO create interaction msg
         
         self.bridge = CvBridge()
-        self.rgb_subscription = self.create_subscription(
+        super().__init__('context_aware_detector')
+        self.subscription = self.create_subscription(
                 Image,
                 '/social_map',
                 self.social_zone_callback,
                 10)
+        self.subscription  # prevent unused variable warning
+
+
 
     def social_zone_callback(self, msg):
         try:
             im0s = self.bridge.imgmsg_to_cv2(
                         msg, desired_encoding='passthrough')
-            self.timestamp = self.tracker.get_clock().now().nanoseconds
+            im0s = cv2.cvtColor(im0s,cv2.COLOR_GRAY2RGB)
+            self.timestamp = self.get_clock().now().nanoseconds
 
             assert im0s is not None, 'Image Not Found '
             img = letterbox(im0s, self.imgsz, stride=self.stride)[0]
-
+            
             # Convert
             img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
             img = np.ascontiguousarray(img)
@@ -152,8 +159,9 @@ class Detector(Node):
                         #print(f"Class = {class_ID}, x = {x}, y = {y}, width = {w}, height = {h}, conf = {confi}") # Remove after ROS implementation
 
                 # Print time (inference + NMS)
-                print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
-                return class_ID, x, y, w, h, confi
+                    print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
+                    return class_ID, x, y, w, h, confi
+                return None
 
 
 def main(args=None):
