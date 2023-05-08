@@ -67,7 +67,7 @@ class Detector(Node):
         self.old_img_b = 1
 
         #ROS2 subscriber and publisher setup
-        #self.interaction_publisher = self.create_publisher(Interaction, 'interaction', 10) #TODO create interaction msg
+        # self.interaction_publisher = self.create_publisher(Interaction, 'interaction', 10) #TODO create interaction msg
         
         self.bridge = CvBridge()
         super().__init__('context_aware_detector')
@@ -96,6 +96,9 @@ class Detector(Node):
 
             self.result = self.detect(im0s, img)
             print(self.result) # TODO publish values instead
+            # msg = Interaction_msg
+            # msg.data = self.result
+            # self.interaction_publisher.publish(msg)
 
         except Exception as e:
                 print(f"Exception on social_zone_callback")
