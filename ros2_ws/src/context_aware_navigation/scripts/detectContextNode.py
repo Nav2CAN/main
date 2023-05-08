@@ -34,12 +34,14 @@ class Detector(Node):
     agnostic_nms: choose if the classes affect the IOU NMS
     device: choose compute device
     '''
-    def __init__(self, weights = '/home/jonathan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/yolov7-ContextNav.pt', img_size = 320, trace = True, 
-                 augment = False, conf_thres = 0.25, iou_thres = 0.45,
+    def __init__(self, weights = '/home/jonathan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/yolov7-ContextNav.pt',
+                  img_size = 320, map_size = 15,
+                  trace = True, augment = False, conf_thres = 0.25, iou_thres = 0.45,
                  classes = None, agnostic_nms = False, device = ''):
         self.weights, self.imgsz, self.trace =  weights, img_size, trace
         self.augment, self.conf_thres, self.iou_thres = augment, conf_thres, iou_thres
         self.classes, self.agnostic_nms = classes, agnostic_nms
+        self.map_size = map_size
         
         # Initialize
         set_logging()
@@ -84,7 +86,7 @@ class Detector(Node):
         try:
             im0s = self.bridge.imgmsg_to_cv2(
                         msg, desired_encoding='passthrough')
-            im0s = cv2.cvtColor(im0s,cv2.COLOR_GRAY2RGB)
+            im0s = cv2.cvtColor(im0s,cv2.COLOR_GRAY2RGB) # Convert image to rgb for YOLOv7
             self.timestamp = self.get_clock().now().nanoseconds
 
             assert im0s is not None, 'Image Not Found '
@@ -94,10 +96,20 @@ class Detector(Node):
             img = img[:, :, ::-1].transpose(2, 0, 1)  # BGR to RGB, to 3x416x416
             img = np.ascontiguousarray(img)
 
-            self.result = self.detect(im0s, img)
+            class_ID, x, y, w, h, confi = self.detect(im0s, img)
+            tf = (0,0) # TODO add tf functionality for transforming map
+
+            x = tf[0] + (x - 0.5) * self.map_size # put center value in middle of map and convert to meters
+            y = tf[1] +(y - 0.5)*self.map_size # put center value in middle of map and convert to meters
+            
+            w = w*self.map_size # transform to meters
+            h = h*self.map_size # transform to meters
+
+
+
             print(self.result) # TODO publish values instead
             # msg = Interaction_msg
-            # msg.data = self.result
+            # msg.data = class_ID, x, y, w, h, confi
             # self.interaction_publisher.publish(msg)
 
         except Exception as e:
