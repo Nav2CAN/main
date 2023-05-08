@@ -44,6 +44,7 @@ ament_python_install_package(${PROJECT_NAME})
 # Install python executables
 install(PROGRAMS
   scripts/social_map_generator.py
+  scripts/detectContextNode.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
