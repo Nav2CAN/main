@@ -80,20 +80,20 @@ namespace context_aware_navigation
     void
     SocialLayer::imageCallback(sensor_msgs::msg::Image::ConstSharedPtr message)
     {
-        //convert iamge message
+        cv_bridge::CvImagePtr cv_ptr;
+        // convert iamge message
         try
         {
-            //convert and update pointer with new image
-            // TODO the rotation from this is not critcal through time but the translation is so consider saving the timestamp of the message
-            social_map = cv_bridge::toCvCopy(message, sensor_msgs::image_encodings::BGR8);
+            // convert and update pointer with new image
+            //  TODO the rotation from this is not critcal through time but the translation is so consider saving the timestamp of the message
+            cv_ptr = cv_bridge::toCvCopy(message, sensor_msgs::image_encodings::BGR8);
+            cv::cvtColor(cv_ptr->image, social_map, CV_BGR2GRAY); //save grayscale image
         }
         catch (cv_bridge::Exception &e)
         {
             return;
         }
     }
-
-
 
     // The method is called when footprint was changed.
     // Here it just resets need_recalculation_ variable.
@@ -123,12 +123,13 @@ namespace context_aware_navigation
             return;
         }
         auto node = node_.lock();
-          if (!node) {
+        if (!node)
+        {
             throw std::runtime_error{"Failed to lock node"};
         }
         setDefaultValue(nav2_costmap_2d::NO_INFORMATION);
         matchSize();
-        uint8_t * costmap_array = getCharMap();
+        uint8_t *costmap_array = getCharMap();
         unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
 
         min_i = std::max(0, min_i);
@@ -136,8 +137,28 @@ namespace context_aware_navigation
         max_i = std::min(static_cast<int>(size_x), max_i);
         max_j = std::min(static_cast<int>(size_y), max_j);
 
+        // center of image
+        int center_image_j = std::floor(social_map_rotated.rows / 2);
+        int center_image_i = std::floor(social_map_rotated.cols / 2);
+
+        // center of costmap layer
+        int center_layer_j = std::floor((max_j - min_j) / 2);
+        int center_layer_i = std::floor((max_i - min_i) / 2);
+
+        for (int j = min_j; j < max_j; j++)
+        {
+            for (int i = min_i; i < max_i; i++)
+            {
+                // check if layer pixel lays in image
+                if (std::abs(j - center_layer_j) <= center_image_j && std::abs(i - center_layer_i) <= center_image_i)
+                {
+                    //set pixel value
+                    costmap_array[getIndex(i, j)] = (int)social_map_rotated.at<uchar>(center_image_j - (center_layer_j - j), center_image_i - (center_layer_i - i));
+                }
+            }
+        }
         // todo handle cropping down of arraysizes
-        costmap_array = social_map_rotated->data;
+        costmap_array = social_map_rotated.data;
         // This combines the master costmap with the current costmap by taking
         // the max across all costmaps.
         updateWithMax(master_grid, min_i, min_j, max_i, max_j);
@@ -147,47 +168,44 @@ namespace context_aware_navigation
     void SocialLayer::rotateImage()
     {
 
-        //rotate the map to the latest location of the robot and create pointer to rotated map
-
+        // rotate the map to the latest location of the robot and create pointer to rotated map
+        auto node = node_.lock(); //lock so the image is not modified in the meantime
         std::string fromFrameRel = target_frame.c_str();
         std::string toFrameRel = base_frame.c_str();
         geometry_msgs::msg::TransformStamped t;
-            //get transform between robot and map
-        try {
-        t = tf_buffer->lookupTransform(
-            toFrameRel, fromFrameRel,
-            tf2::TimePointZero);
-        } catch (const tf2::TransformException & ex) {
-
-        return;
+        // get transform between robot and map
+        try
+        {
+            t = tf_buffer->lookupTransform(
+                toFrameRel, fromFrameRel,
+                tf2::TimePointZero);
         }
+        catch (const tf2::TransformException &ex)
+        {
 
-        //get rpy
+            return;
+        }
+        // get rpy
         tf2::Quaternion q(
-                t.transform.rotation.x,
-                t.transform.rotation.y,
-                t.transform.rotation.z,
-                t.transform.rotation.w);
+            t.transform.rotation.x,
+            t.transform.rotation.y,
+            t.transform.rotation.z,
+            t.transform.rotation.w);
         tf2::Matrix3x3 m(q);
         double roll, pitch, yaw;
         m.getRPY(roll, pitch, yaw);
-        //https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
-        // get rotation matrix for rotating the image around its center in pixel coordinates
-        cv::Point2f center((social_map->image.cols-1)/2.0, (social_map->image.rows-1)/2.0);
-        cv::Mat rot = cv::getRotationMatrix2D(center, -yaw*(180/M_PI), 1.0);
+        // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
+        //  get rotation matrix for rotating the image around its center in pixel coordinates
+        cv::Point2f center((social_map.cols - 1) / 2.0, (social_map.rows - 1) / 2.0);
+        cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
         // determine bounding rectangle, center not relevant
-        cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), social_map->image.size(),-yaw*(180/M_PI)).boundingRect2f();
+        cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), social_map.size(), -yaw * (180 / M_PI)).boundingRect2f();
         // adjust transformation matrix
-        rot.at<double>(0,2) += bbox.width/2.0 - social_map->image.cols/2.0;
-        rot.at<double>(1,2) += bbox.height/2.0 - social_map->image.rows/2.0;
-        cv::Mat dst;
-        cv::warpAffine(social_map->image, dst, rot, bbox.size());
-        social_map_rotated = std::make_shared<cv::Mat>(dst);
+        rot.at<double>(0, 2) += bbox.width / 2.0 - social_map.cols / 2.0;
+        rot.at<double>(1, 2) += bbox.height / 2.0 - social_map.rows / 2.0;
+        cv::warpAffine(social_map, social_map_rotated, rot, bbox.size());
     }
 } // namespace nav2_gradient_costmap_plugin
-
-
-
 
 // This is the macro allowing a nav2_gradient_costmap_plugin::GradientLayer class
 // to be registered in order to be dynamically loadable of base type nav2_costmap_2d::Layer.

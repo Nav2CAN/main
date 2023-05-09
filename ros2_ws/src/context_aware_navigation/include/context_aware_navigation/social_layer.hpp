@@ -100,8 +100,8 @@ protected:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
 
-  cv_bridge::CvImagePtr social_map;
-  std::shared_ptr<cv::Mat> social_map_rotated
+  cv::Mat social_map;
+  cv::Mat social_map_rotated;
 
   // Size of gradient in cells
   int GRADIENT_SIZE = 20;

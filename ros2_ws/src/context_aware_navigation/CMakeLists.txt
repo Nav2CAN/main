@@ -18,11 +18,13 @@ find_package(sensor_msgs)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
 
 set(dep_pkgs
     rclcpp
     nav2_costmap_2d
     OpenCV
+    cv_bridge
     pluginlib)
 # Create cpp executables
 # add_executable(cpp_exe src/cpp_node.cpp)
