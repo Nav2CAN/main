@@ -97,20 +97,22 @@ class Detector(Node):
             img = np.ascontiguousarray(img)
 
             class_ID, x, y, w, h, confi = self.detect(im0s, img)
-            tf = (0,0) # TODO add tf functionality for transforming map
+            if class_ID != None:
+                
+                tf = (0,0) # TODO add tf functionality for transforming map
 
-            x = tf[0] + (x - 0.5) * self.map_size # put center value in middle of map and convert to meters
-            y = tf[1] +(y - 0.5)*self.map_size # put center value in middle of map and convert to meters
-            
-            w = w*self.map_size # transform to meters
-            h = h*self.map_size # transform to meters
+                x = tf[0] + (x - 0.5) * self.map_size # put center value in middle of map and convert to meters
+                y = tf[1] +(y - 0.5)*self.map_size # put center value in middle of map and convert to meters
+                
+                w = w*self.map_size # transform to meters
+                h = h*self.map_size # transform to meters
 
 
 
-            print(self.result) # TODO publish values instead
-            # msg = Interaction_msg
-            # msg.data = class_ID, x, y, w, h, confi
-            # self.interaction_publisher.publish(msg)
+                print(self.result) # TODO publish values instead
+                # msg = Interaction_msg
+                # msg.data = class_ID, x, y, w, h, confi
+                # self.interaction_publisher.publish(msg)
 
         except Exception as e:
                 print(f"Exception on social_zone_callback")
@@ -176,7 +178,7 @@ class Detector(Node):
                 # Print time (inference + NMS)
                     #print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
                     return class_ID, x, y, w, h, confi
-                return None
+                return None, None, None, None, None, None # TODO handle output when no detection
 
 
 def main(args=None):
