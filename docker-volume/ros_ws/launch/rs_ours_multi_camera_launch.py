@@ -27,14 +27,15 @@ from launch import LaunchDescription
 import launch_ros.actions
 from launch.actions import IncludeLaunchDescription
 from launch.substitutions import LaunchConfiguration, ThisLaunchFileDir
+from launch.actions import TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 import sys
 import pathlib
 sys.path.append(str(pathlib.Path(__file__).parent.absolute()))
 import rs_ours_launch
 
-local_parameters = [{'name': 'camera_name1', 'default': 'camera1', 'description': 'camera unique name'},
-                    {'name': 'camera_name2', 'default': 'camera2', 'description': 'camera unique name'},
+local_parameters = [{'name': 'camera_name1', 'default': 'camera1', 'description': 'left_camera','usb_port_id': '2-3.4' ,'serial_no': '834412071134'},
+                    {'name': 'camera_name2', 'default': 'camera2', 'description': 'right_camera','usb_port_id': '2-3.1' , 'serial_no': '034422074840'},
                    ]
 
 def set_configurable_parameters(local_params):
@@ -60,14 +61,20 @@ def generate_launch_description():
             PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/rs_ours_launch.py']),
             launch_arguments=set_configurable_parameters(params1).items(),
         ),
-        IncludeLaunchDescription(
+        TimerAction(period=5.0,
+            actions=[IncludeLaunchDescription(
             PythonLaunchDescriptionSource([ThisLaunchFileDir(), '/rs_ours_launch.py']),
-            launch_arguments=set_configurable_parameters(params2).items(),
-        ),
+            launch_arguments=set_configurable_parameters(params2).items())]),
+        
         # dummy static transformation from camera1 to camera2
         launch_ros.actions.Node(
             package = "tf2_ros",
             executable = "static_transform_publisher",
-            arguments = ["0", "0", "0", "0", "0", "0", "camera1_link", "camera2_link"]
+            arguments = ["0", "-.055", "0", "0.4386448745", "0", "0", "camera_link", "camera2_link"]
+        ),
+        launch_ros.actions.Node(
+            package = "tf2_ros",
+            executable = "static_transform_publisher",
+            arguments = ["0", ".055", "0", "-0.4386448745", "0", "0", "camera_link", "camera1_link"]
         ),
     ])
