@@ -1,4 +1,4 @@
-#include "context_aware_navigation/social_layer.hpp"
+#include "context_aware_navigation/interaction_layer.hpp"
 #include <math.h>
 #include "nav2_costmap_2d/costmap_math.hpp"
 #include "nav2_costmap_2d/footprint.hpp"
@@ -10,7 +10,7 @@ using nav2_costmap_2d::NO_INFORMATION;
 namespace context_aware_navigation
 {
 
-    SocialLayer::SocialLayer()
+    InteractionLayer::InteractionLayer()
         : last_min_x_(-std::numeric_limits<float>::max()),
           last_min_y_(-std::numeric_limits<float>::max()),
           last_max_x_(std::numeric_limits<float>::max()),
@@ -22,7 +22,7 @@ namespace context_aware_navigation
     // It contains ROS parameter(s) declaration and initialization
     // of need_recalculation_ variable.
     void
-    SocialLayer::onInitialize()
+    InteractionLayer::onInitialize()
     {
         auto node = node_.lock();
         declareParameter("enabled", rclcpp::ParameterValue(true));
@@ -32,22 +32,20 @@ namespace context_aware_navigation
         current_ = true;
 
         target_frame = node->declare_parameter<std::string>("target_frame", "map");
+        interaction_map_size = node->declare_parameter<float>("interaction_map_size", 15.0);
+        interaction_cost = node->declare_parameter<float>("interaction_map_size", 125.0);
+        target_frame = node->declare_parameter<std::string>("target_frame", "map");
         base_frame = layered_costmap_->getGlobalFrameID();
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-
-        social_map_sub_ = node->create_subscription<sensor_msgs::msg::Image>(
-        "/social_map", 10, std::bind(&SocialLayer::imageCallback, this, std::placeholders::_1));
-        current_ = true;
-
     }
 
     // The method is called to ask the plugin: which area of costmap it needs to update.
     // Inside this method window bounds are re-calculated if need_recalculation_ is true
     // and updated independently on its value.
     void
-    SocialLayer::updateBounds(
+    InteractionLayer::updateBounds(
         double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/, double *min_x,
         double *min_y, double *max_x, double *max_y)
     {
@@ -83,34 +81,27 @@ namespace context_aware_navigation
         }
     }
     void
-    SocialLayer::imageCallback(sensor_msgs::msg::Image::ConstSharedPtr message)
+    InteractionLayer::interactionCallback(
+      multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message)
     {
-        cv_bridge::CvImagePtr cv_ptr;
-        // convert iamge message
-        try
-        {
-            // convert and update pointer with new image
-            //  TODO the rotation from this is not critcal through time but the translation is so consider saving the timestamp of the message
-            cv_ptr = cv_bridge::toCvCopy(message);
-            // cv::cvtColor(cv_ptr->image, social_map, CV_BGR2GRAY); //save grayscale image
-            social_map = cv_ptr->image;
-        }
-        catch (cv_bridge::Exception &e)
-        {
-            return;
-        }
+
+        double res = getResolution(); //[m/px]
+        interaction_map = cv::Mat::zeros(cv::Size(interaction_map_size,interaction_map_size),CV_8UC1);
+  
+        cv::Point center=cv::Point((int)interaction_map.cols+message->center_x,(int)interaction_map.rows+message->center_y);
+        cv::ellipse(interaction_map,center,cv::Size(message->width/2, message->height/2),0,0,360,255,-1);
     }
 
     // The method is called when footprint was changed.
     // Here it just resets need_recalculation_ variable.
     void
-    SocialLayer::onFootprintChanged()
+    InteractionLayer::onFootprintChanged()
     {
         need_recalculation_ = true;
 
         RCLCPP_DEBUG(rclcpp::get_logger(
                          "nav2_costmap_2d"),
-                     "SocialLayer::onFootprintChanged(): num footprint points: %lu",
+                     "InteractionLayer::onFootprintChanged(): num footprint points: %lu",
                      layered_costmap_->getFootprint().size());
     }
 
@@ -119,7 +110,7 @@ namespace context_aware_navigation
     // Inside this method the costmap gradient is generated and is writing directly
     // to the resulting costmap master_grid without any merging with previous layers.
     void
-    SocialLayer::updateCosts(
+    InteractionLayer::updateCosts(
         nav2_costmap_2d::Costmap2D &master_grid, int min_i, int min_j,
         int max_i,
         int max_j)
@@ -133,7 +124,7 @@ namespace context_aware_navigation
         {
             throw std::runtime_error{"Failed to lock node"};
         }
-        setDefaultValue(nav2_costmap_2d::NO_INFORMATION);
+        setDefaultValue(nav2_costmap_2d::FREE_SPACE);
         matchSize();
         uint8_t *costmap_array = getCharMap();
         unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
@@ -144,12 +135,12 @@ namespace context_aware_navigation
         max_j = std::min(static_cast<int>(size_y), max_j);
 
         // center of image
-        int center_image_j = std::floor(social_map_rotated.rows / 2);
-        int center_image_i = std::floor(social_map_rotated.cols / 2);
+        int center_image_j = (int)(interaction_map_rotated.rows / 2);
+        int center_image_i = (int)(interaction_map_rotated.cols / 2);
 
         // center of costmap layer
-        int center_layer_j = std::floor((max_j - min_j) / 2);
-        int center_layer_i = std::floor((max_i - min_i) / 2);
+        int center_layer_j = (int)((max_j - min_j) / 2);
+        int center_layer_i = (int)((max_i - min_i) / 2);
 
         for (int j = min_j; j < max_j; j++)
         {
@@ -159,21 +150,22 @@ namespace context_aware_navigation
                 if (std::abs(j - center_layer_j) <= center_image_j && std::abs(i - center_layer_i) <= center_image_i)
                 {
                     //set pixel value to the one in the social map
-                    costmap_array[getIndex(i, j)] = (int)social_map_rotated.at<uchar>(center_image_j - (center_layer_j - j), center_image_i - (center_layer_i - i));
-                    social_map_rotated.ptr((center_image_j - (center_layer_j - j)*social_map_rotated.cols) +center_image_i - (center_layer_i - i))
+                    costmap_array[getIndex(i, j)] = (int)interaction_map_rotated.ptr((center_image_j - (center_layer_j - j))*interaction_map_rotated.cols+center_image_i - (center_layer_i - i));
                 }
+                // else {costmap_array[getIndex(i, j)] = 0;}
+                
             }
         }
-
+ 
         // This combines the master costmap with the current costmap by taking
         // the max across all costmaps.
         updateWithMax(master_grid, min_i, min_j, max_i, max_j);
         current_ = true;
     }
 
-    void SocialLayer::rotateImage()
-    {
 
+    void InteractionLayer::rotateImage(cv::Mat input)
+    {
         // rotate the map to the latest location of the robot and create pointer to rotated map
         auto node = node_.lock(); //lock so the image is not modified in the meantime
         std::string fromFrameRel = target_frame.c_str();
@@ -210,6 +202,8 @@ namespace context_aware_navigation
         rot.at<double>(0, 2) += bbox.width / 2.0 - social_map.cols / 2.0;
         rot.at<double>(1, 2) += bbox.height / 2.0 - social_map.rows / 2.0;
         cv::warpAffine(social_map, social_map_rotated, rot, bbox.size());
+
+        return out;
     }
 } // namespace nav2_gradient_costmap_plugin
 
@@ -217,4 +211,4 @@ namespace context_aware_navigation
 // to be registered in order to be dynamically loadable of base type nav2_costmap_2d::Layer.
 // Usually places in the end of cpp-file where the loadable class written.
 #include "pluginlib/class_list_macros.hpp"
-PLUGINLIB_EXPORT_CLASS(context_aware_navigation::SocialLayer, nav2_costmap_2d::Layer)
+PLUGINLIB_EXPORT_CLASS(context_aware_navigation::InteractionLayer, nav2_costmap_2d::Layer)
