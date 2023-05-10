@@ -43,7 +43,6 @@ public:
 
   virtual void imageCallback(
       sensor_msgs::msg::Image::ConstSharedPtr message);
-  virtual void rotateImage();
 
 
 
@@ -56,7 +55,6 @@ protected:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr social_map_sub_;
-  cv::Mat social_map;
   cv::Mat social_map_rotated;
 };
 

@@ -18,7 +18,9 @@ from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from multi_person_tracker_interfaces.msg import BoundingBox
-
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
 
 class Detector(Node):
     '''
@@ -86,9 +88,24 @@ class Detector(Node):
             self.social_zone_callback,
             10)
         self.subscription  # prevent unused variable warning
+                # tf listener stuff so we can transform people into there
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
     def social_zone_callback(self, msg):
         try:
+            #TODO assign correct tf_frames // should be from map to base_link or base_footprint
+            t = self.tf_buffer.lookup_transform(
+            "camera_link",
+            "camera_link",
+            rclpy.time.Time())
+        except TransformException as ex:
+            self.get_logger().info(
+                f'Could not transform base_link to map: {ex}')
+            return
+        
+        try:
+
             im0s = self.bridge.imgmsg_to_cv2(
                 msg, desired_encoding='passthrough')
             # Convert image to rgb for YOLOv7
@@ -109,17 +126,20 @@ class Detector(Node):
                 tf = (0, 0)  # TODO add tf functionality for transforming map
 
                 # put center value in middle of map and convert to meters
-                x = tf[0] + (x - 0.5) * 300 * self.map_size
+                x = tf[0] + (x - 0.5) * im0s.shape[1] * self.map_size
                 # put center value in middle of map and convert to meters
-                y = tf[1] + (y - 0.5) * 300 * self.map_size
+                y = tf[1] + (y - 0.5) * im0s.shape[0] * self.map_size
 
-                w = w * 300 * self.map_size  # transform to meters
-                h = h * 300 * self.map_size  # transform to meters
+                w = w * im0s.shape[1] * self.map_size  # transform to meters
+                h = h * im0s.shape[0] * self.map_size  # transform to meters
                 
+                #transform center coordinates into /map frame
+                #orientation does not matter since the two maps are x,y-colinear 
+
                 bb = BoundingBox()
                 bb.header=msg.header
-                bb.center_x = x
-                bb.center_y = y
+                bb.center_x = x + t.transform.translation.x
+                bb.center_y = y + t.transform.translation.y
                 bb.width = w
                 bb.height = h
 

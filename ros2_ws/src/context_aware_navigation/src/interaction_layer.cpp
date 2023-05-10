@@ -31,11 +31,7 @@ namespace context_aware_navigation
         need_recalculation_ = false;
         current_ = true;
 
-        target_frame = node->declare_parameter<std::string>("target_frame", "map");
-        interaction_map_size = node->declare_parameter<float>("interaction_map_size", 15.0);
         interaction_cost = node->declare_parameter<float>("interaction_map_size", 125.0);
-        target_frame = node->declare_parameter<std::string>("target_frame", "map");
-        base_frame = layered_costmap_->getGlobalFrameID();
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
@@ -84,12 +80,7 @@ namespace context_aware_navigation
     InteractionLayer::interactionCallback(
       multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message)
     {
-
-        double res = getResolution(); //[m/px]
-        interaction_map = cv::Mat::zeros(cv::Size(interaction_map_size,interaction_map_size),CV_8UC1);
-  
-        cv::Point center=cv::Point((int)interaction_map.cols+message->center_x,(int)interaction_map.rows+message->center_y);
-        cv::ellipse(interaction_map,center,cv::Size(message->width/2, message->height/2),0,0,360,255,-1);
+        BoundingBox=message;
     }
 
     // The method is called when footprint was changed.
@@ -124,7 +115,7 @@ namespace context_aware_navigation
         {
             throw std::runtime_error{"Failed to lock node"};
         }
-        setDefaultValue(nav2_costmap_2d::FREE_SPACE);
+        setDefaultValue(nav2_costmap_2d::NO_INFORMATION);
         matchSize();
         uint8_t *costmap_array = getCharMap();
         unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
@@ -134,76 +125,24 @@ namespace context_aware_navigation
         max_i = std::min(static_cast<int>(size_x), max_i);
         max_j = std::min(static_cast<int>(size_y), max_j);
 
-        // center of image
-        int center_image_j = (int)(interaction_map_rotated.rows / 2);
-        int center_image_i = (int)(interaction_map_rotated.cols / 2);
-
         // center of costmap layer
-        int center_layer_j = (int)((max_j - min_j) / 2);
-        int center_layer_i = (int)((max_i - min_i) / 2);
+        
+        uint x1,y1;
 
-        for (int j = min_j; j < max_j; j++)
-        {
-            for (int i = min_i; i < max_i; i++)
-            {
-                // check if layer pixel lays in image
-                if (std::abs(j - center_layer_j) <= center_image_j && std::abs(i - center_layer_i) <= center_image_i)
-                {
-                    //set pixel value to the one in the social map
-                    costmap_array[getIndex(i, j)] = (int)interaction_map_rotated.ptr((center_image_j - (center_layer_j - j))*interaction_map_rotated.cols+center_image_i - (center_layer_i - i));
-                }
-                // else {costmap_array[getIndex(i, j)] = 0;}
-                
-            }
+        //get coordinates of interaction in the costmap
+        bool valid=worldToMap(BoundingBox->center_x,BoundingBox->center_y,x1,y1);
+
+        if (valid==true){
+            cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
+            cv::Point center = cv::Point(x1,y1);
+            cv::Point size = cv::Size(BoundingBox->width,BoundingBox->height);
+            cv::ellipse(cv_costmap,center,size,0,0,360,interaction_cost,-1);//draw interaction as ellipse
+
+            costmap_array=cv_costmap.data;//write the array to the costmap
+            updateWithMax(master_grid, min_i, min_j, max_i, max_j); //update with max
+            current_ = true;
         }
- 
-        // This combines the master costmap with the current costmap by taking
-        // the max across all costmaps.
-        updateWithMax(master_grid, min_i, min_j, max_i, max_j);
-        current_ = true;
-    }
 
-
-    void InteractionLayer::rotateImage(cv::Mat input)
-    {
-        // rotate the map to the latest location of the robot and create pointer to rotated map
-        auto node = node_.lock(); //lock so the image is not modified in the meantime
-        std::string fromFrameRel = target_frame.c_str();
-        std::string toFrameRel = base_frame.c_str();
-        geometry_msgs::msg::TransformStamped t;
-        // get transform between robot and map
-        try
-        {
-            t = tf_buffer->lookupTransform(
-                toFrameRel, fromFrameRel,
-                tf2::TimePointZero);
-        }
-        catch (const tf2::TransformException &ex)
-        {
-
-            return;
-        }
-        // get rpy
-        tf2::Quaternion q(
-            t.transform.rotation.x,
-            t.transform.rotation.y,
-            t.transform.rotation.z,
-            t.transform.rotation.w);
-        tf2::Matrix3x3 m(q);
-        double roll, pitch, yaw;
-        m.getRPY(roll, pitch, yaw);
-        // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
-        //  get rotation matrix for rotating the image around its center in pixel coordinates
-        cv::Point2f center((social_map.cols - 1) / 2.0, (social_map.rows - 1) / 2.0);
-        cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
-        // determine bounding rectangle, center not relevant
-        cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), social_map.size(), -yaw * (180 / M_PI)).boundingRect2f();
-        // adjust transformation matrix
-        rot.at<double>(0, 2) += bbox.width / 2.0 - social_map.cols / 2.0;
-        rot.at<double>(1, 2) += bbox.height / 2.0 - social_map.rows / 2.0;
-        cv::warpAffine(social_map, social_map_rotated, rot, bbox.size());
-
-        return out;
     }
 } // namespace nav2_gradient_costmap_plugin
 

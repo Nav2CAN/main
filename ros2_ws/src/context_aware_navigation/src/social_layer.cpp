@@ -93,7 +93,40 @@ namespace context_aware_navigation
             //  TODO the rotation from this is not critcal through time but the translation is so consider saving the timestamp of the message
             cv_ptr = cv_bridge::toCvCopy(message);
             // cv::cvtColor(cv_ptr->image, social_map, CV_BGR2GRAY); //save grayscale image
-            social_map = cv_ptr->image;
+            std::string fromFrameRel = target_frame.c_str();
+            std::string toFrameRel = base_frame.c_str();
+            geometry_msgs::msg::TransformStamped t;
+            // get transform between robot and map
+            try
+            {
+                t = tf_buffer->lookupTransform(
+                    toFrameRel, fromFrameRel,
+                    tf2::TimePointZero);
+            }
+            catch (const tf2::TransformException &ex)
+            {
+
+                return;
+            }
+            // get rpy
+            tf2::Quaternion q(
+                t.transform.rotation.x,
+                t.transform.rotation.y,
+                t.transform.rotation.z,
+                t.transform.rotation.w);
+            tf2::Matrix3x3 m(q);
+            double roll, pitch, yaw;
+            m.getRPY(roll, pitch, yaw);
+            // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
+            //  get rotation matrix for rotating the image around its center in pixel coordinates
+            cv::Point2f center((cv_ptr->image.cols - 1) / 2.0, (cv_ptr->image.rows - 1) / 2.0);
+            cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
+            // determine bounding rectangle, center not relevant
+            cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), cv_ptr->image.size(), -yaw * (180 / M_PI)).boundingRect2f();
+            // adjust transformation matrix
+            rot.at<double>(0, 2) += bbox.width / 2.0 - cv_ptr->image.cols / 2.0;
+            rot.at<double>(1, 2) += bbox.height / 2.0 - cv_ptr->image.rows / 2.0;
+            cv::warpAffine(cv_ptr->image, social_map_rotated, rot, bbox.size());
         }
         catch (cv_bridge::Exception &e)
         {
@@ -158,9 +191,9 @@ namespace context_aware_navigation
                 // check if layer pixel lays in image
                 if (std::abs(j - center_layer_j) <= center_image_j && std::abs(i - center_layer_i) <= center_image_i)
                 {
+                    int index = getIndex(i, j);
                     //set pixel value to the one in the social map
-                    costmap_array[getIndex(i, j)] = (int)social_map_rotated.at<uchar>(center_image_j - (center_layer_j - j), center_image_i - (center_layer_i - i));
-                    social_map_rotated.ptr((center_image_j - (center_layer_j - j)*social_map_rotated.cols) +center_image_i - (center_layer_i - i))
+                    costmap_array[index] = static_cast<uint8_t>(social_map_rotated.at<uchar>((center_image_j - (center_layer_j - j),center_image_i - (center_layer_i - i))));
                 }
             }
         }
@@ -169,47 +202,6 @@ namespace context_aware_navigation
         // the max across all costmaps.
         updateWithMax(master_grid, min_i, min_j, max_i, max_j);
         current_ = true;
-    }
-
-    void SocialLayer::rotateImage()
-    {
-
-        // rotate the map to the latest location of the robot and create pointer to rotated map
-        auto node = node_.lock(); //lock so the image is not modified in the meantime
-        std::string fromFrameRel = target_frame.c_str();
-        std::string toFrameRel = base_frame.c_str();
-        geometry_msgs::msg::TransformStamped t;
-        // get transform between robot and map
-        try
-        {
-            t = tf_buffer->lookupTransform(
-                toFrameRel, fromFrameRel,
-                tf2::TimePointZero);
-        }
-        catch (const tf2::TransformException &ex)
-        {
-
-            return;
-        }
-        // get rpy
-        tf2::Quaternion q(
-            t.transform.rotation.x,
-            t.transform.rotation.y,
-            t.transform.rotation.z,
-            t.transform.rotation.w);
-        tf2::Matrix3x3 m(q);
-        double roll, pitch, yaw;
-        m.getRPY(roll, pitch, yaw);
-        // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
-        //  get rotation matrix for rotating the image around its center in pixel coordinates
-        cv::Point2f center((social_map.cols - 1) / 2.0, (social_map.rows - 1) / 2.0);
-        cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
-        // determine bounding rectangle, center not relevant
-        cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), social_map.size(), -yaw * (180 / M_PI)).boundingRect2f();
-        // adjust transformation matrix
-        rot.at<double>(0, 2) += bbox.width / 2.0 - social_map.cols / 2.0;
-        rot.at<double>(1, 2) += bbox.height / 2.0 - social_map.rows / 2.0;
-        cv::warpAffine(social_map, social_map_rotated, rot, bbox.size());
     }
 } // namespace nav2_gradient_costmap_plugin
 

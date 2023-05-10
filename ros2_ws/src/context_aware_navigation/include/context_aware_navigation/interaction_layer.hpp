@@ -14,7 +14,6 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "multi_person_tracker_interfaces/msg/bounding_box.hpp"
-
 namespace context_aware_navigation
 {
 
@@ -44,7 +43,6 @@ public:
 
   virtual void interactionCallback(
       multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message);
-  virtual void rotateImage();
 
 
 
@@ -53,14 +51,10 @@ protected:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   bool need_recalculation_;
-  std::string target_frame;
-  std::string base_frame;
-  float interaction_map_size;
   float interaction_cost;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
-  cv::Mat interaction_map;
-  cv::Mat interaction_map_rotated;
+  multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr BoundingBox;
 };
 
 }  // namespace context_aware_navigation

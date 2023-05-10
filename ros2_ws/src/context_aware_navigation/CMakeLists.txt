@@ -26,6 +26,7 @@ set(dep_pkgs
     nav2_costmap_2d
     OpenCV
     cv_bridge
+    multi_person_tracker_interfaces
     pluginlib)
 
 
