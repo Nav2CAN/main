@@ -1,5 +1,0 @@
-<library path="context_aware_navigation">
-  <class name="context_aware_navigation/SocialLayer" type="context_aware_navigation::SocialLayer" base_class_type="nav2_costmap_2d::Layer">
-    <description>This is an example plugin which puts repeating costs gradients to costmap</description>
-  </class>
-</library>

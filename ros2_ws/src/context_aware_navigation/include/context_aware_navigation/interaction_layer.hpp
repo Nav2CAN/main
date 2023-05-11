@@ -1,5 +1,5 @@
-#ifndef SOCIAL_LAYER_HPP_
-#define SOCIAL_LAYER_HPP_
+#ifndef INTERACTION_LAYER_HPP_
+#define INTERACTION_LAYER_HPP_
 
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
@@ -13,14 +13,14 @@
 #include "cv_bridge/cv_bridge.h"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-
+#include "multi_person_tracker_interfaces/msg/bounding_box.hpp"
 namespace context_aware_navigation
 {
 
-class SocialLayer : public nav2_costmap_2d::CostmapLayer
+class InteractionLayer : public nav2_costmap_2d::CostmapLayer
 {
 public:
-  SocialLayer();
+  InteractionLayer();
 
   virtual void onInitialize();
   virtual void updateBounds(
@@ -41,8 +41,9 @@ public:
 
   virtual bool isClearable() {return false;}
 
-  virtual void imageCallback(
-      sensor_msgs::msg::Image::ConstSharedPtr message);
+  virtual void interactionCallback(
+      multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message);
+
 
 
 
@@ -50,14 +51,12 @@ protected:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   bool need_recalculation_;
-  std::string target_frame;
-  std::string base_frame;
+  float interaction_cost;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
-  rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr social_map_sub_;
-  cv::Mat social_map_rotated;
+  multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr BoundingBox;
 };
 
 }  // namespace context_aware_navigation
 
-#endif  // SOCIAL_LAYER_HPP_
+#endif  // INTERACTION_LAYER_HPP_

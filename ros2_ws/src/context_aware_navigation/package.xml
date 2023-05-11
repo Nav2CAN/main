@@ -34,7 +34,7 @@
   <depend>pluginlib</depend>
   
   <export>
-    <costmap_2d plugin="${prefix}/social_layer.xml" />
+    <costmap_2d plugin="${prefix}/layers.xml" />
     <build_type>ament_cmake</build_type>
   </export>
 </package>

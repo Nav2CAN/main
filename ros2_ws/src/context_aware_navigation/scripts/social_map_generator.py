@@ -48,10 +48,11 @@ class SocialMapGenerator(Node):
 
     def people_callback(self, msg: People):
         # get the latest transform between the robot and the map
+        #TODO assign correct tf_frames
         try:
             t = self.tf_buffer.lookup_transform(
-                "camera1_link",
-                "camera1_link",
+                "camera_link",
+                "camera_link",
                 rclpy.time.Time())
         except TransformException as ex:
             self.get_logger().info(
@@ -99,7 +100,7 @@ class SocialMapGenerator(Node):
                 self.socialMap[miny:maxy, minx:maxx] = np.maximum(
                     roi, social_zone)
         self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
-            self.socialMap, encoding="passthrough"))
+            self.socialMap, encoding="passthrough",header=msg.header))
 
 
 def main(args=None):

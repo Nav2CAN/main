@@ -18,18 +18,23 @@ find_package(sensor_msgs)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(cv_bridge REQUIRED)
+
 
 set(dep_pkgs
     rclcpp
     nav2_costmap_2d
     OpenCV
+    cv_bridge
+    multi_person_tracker_interfaces
     pluginlib)
-# Create cpp executables
-# add_executable(cpp_exe src/cpp_node.cpp)
-# ament_target_dependencies(cpp_exe rclcpp)
+
+
+
 add_library(
   ${PROJECT_NAME} SHARED
-            src/social_layer.cpp)
+            src/social_layer.cpp
+            src/interaction_layer.cpp)
 
 include_directories(include)
 
@@ -55,6 +60,7 @@ install(DIRECTORY
 )
 
 
-pluginlib_export_plugin_description_file(context_aware_navigation social_layer.xml)
+pluginlib_export_plugin_description_file(context_aware_navigation layers.xml)
 ament_target_dependencies(${PROJECT_NAME} ${dep_pkgs})
+
 ament_package()
