@@ -50,6 +50,7 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/social_map_generator.py
   scripts/detectContextNode.py
+  scripts/people_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
