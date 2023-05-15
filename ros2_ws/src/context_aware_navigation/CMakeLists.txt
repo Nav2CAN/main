@@ -50,12 +50,16 @@ ament_python_install_package(${PROJECT_NAME})
 install(PROGRAMS
   scripts/social_map_generator.py
   scripts/detectContextNode.py
+  scripts/stage_joints.py
+  scripts/odom_tf_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
 install(DIRECTORY
   launch
+  world
   params
+  config
   DESTINATION share/${PROJECT_NAME}
 )
 
