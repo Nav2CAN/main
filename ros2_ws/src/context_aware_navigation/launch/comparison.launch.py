@@ -3,12 +3,14 @@
 import os
 
 from ament_index_python.packages import get_package_share_directory
+import launch
 from launch import LaunchDescription
 from launch.substitutions import LaunchConfiguration, TextSubstitution, PythonExpression
 from launch.actions import DeclareLaunchArgument, OpaqueFunction, SetLaunchConfiguration, ExecuteProcess, IncludeLaunchDescription, LogInfo
 from launch_ros.actions import Node
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch_ros.actions import SetParameter
 
 
 def generate_launch_description():
@@ -70,9 +72,11 @@ def generate_launch_description():
         'use_respawn', default_value='False',
         description='Whether to respawn if a node crashes. Applied when composition is disabled.')
 
-    urdf = os.path.join(
-        bringup_dir,
-        'world/urdf/pr2.urdf')
+    urdf_file_name = 'world/urdf/pr2.urdf'
+    urdf = os.path.join(bringup_dir,
+                        urdf_file_name)
+    with open(urdf, 'r') as infp:
+        robot_desc = infp.read()
 
     bringup_cmd = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
@@ -89,43 +93,6 @@ def generate_launch_description():
 
     return LaunchDescription([
         declare_map_yaml_cmd,
-        Node(
-            package='robot_state_publisher',
-            executable='robot_state_publisher',
-            name='robot_state_publisher',
-            output='screen',
-            parameters=[{'use_sim_time': True}],
-            arguments=[urdf]),
-        Node(
-            name='joint_state_publisher',
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            parameters=[{'use_sim_time': True,
-                         'source_list': ["/stage_joint_states"]}],
-        ),
-        Node(
-            name='stage_joints',
-            package='context_aware_navigation',
-            executable='stage_joints.py',
-            parameters=[{'use_sim_time': True}],
-        ),
-        Node(
-            name='odom_tf_publisher',
-            package='context_aware_navigation',
-            executable='odom_tf_publisher.py',
-            parameters=[{'use_sim_time': True}],
-        ),
-
-
-        Node(
-            package='rviz2',
-            namespace='',
-            executable='rviz2',
-            name='rviz2',
-            parameters=[{'use_sim_time': True}],
-            arguments=[
-                '-d', [os.path.join(bringup_dir, 'config', 'comparison.rviz')]]
-        ),
         declare_namespace_cmd,
         declare_use_namespace_cmd,
         declare_slam_cmd,
@@ -134,6 +101,44 @@ def generate_launch_description():
         declare_autostart_cmd,
         declare_use_composition_cmd,
         declare_use_respawn_cmd,
-        bringup_cmd
+        bringup_cmd,
+        SetParameter(
+            name='use_sim_time', value=True),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[urdf]),
+        Node(
+            name='joint_state_publisher',
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            parameters=[
+                {'source_list': ["/stage_joint_states"], 'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            name='stage_joints',
+            package='context_aware_navigation',
+            executable='stage_joints.py',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            name='odom_tf_publisher',
+            package='context_aware_navigation',
+            executable='odom_tf_publisher.py',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            package='rviz2',
+            namespace='',
+            executable='rviz2',
+            name='rviz2',
+            parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[
+                '-d', [os.path.join(bringup_dir, 'config', 'comparison.rviz')]]
+        ),
+
 
     ])
