@@ -13,8 +13,6 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 
 def generate_launch_description():
 
-    this_directory = get_package_share_directory('stage_ros2')
-
     bringup_dir = get_package_share_directory('context_aware_navigation')
     launch_dir = os.path.join(bringup_dir, 'launch')
 
@@ -47,7 +45,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
         default_value=os.path.join(
-            this_directory, 'world', 'maps', 'comparison.yaml'),
+            bringup_dir, 'world', 'maps', 'comparison.yaml'),
         description='Full path to map file to load')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -73,7 +71,7 @@ def generate_launch_description():
         description='Whether to respawn if a node crashes. Applied when composition is disabled.')
 
     urdf = os.path.join(
-        this_directory,
+        bringup_dir,
         'world/urdf/pr2.urdf')
 
     bringup_cmd = IncludeLaunchDescription(
@@ -107,14 +105,14 @@ def generate_launch_description():
         ),
         Node(
             name='stage_joints',
-            package='stage_ros2_scripts',
-            executable='stage_joints',
+            package='context_aware_navigation',
+            executable='stage_joints.py',
             parameters=[{'use_sim_time': True}],
         ),
         Node(
-            name='stage_joints',
-            package='stage_ros2_scripts',
-            executable='odom_tf_publisher',
+            name='odom_tf_publisher',
+            package='context_aware_navigation',
+            executable='odom_tf_publisher.py',
             parameters=[{'use_sim_time': True}],
         ),
 
@@ -126,7 +124,7 @@ def generate_launch_description():
             name='rviz2',
             parameters=[{'use_sim_time': True}],
             arguments=[
-                '-d', [os.path.join(this_directory, 'config', 'rviz', 'comparison.rviz')]]
+                '-d', [os.path.join(bringup_dir, 'config', 'comparison.rviz')]]
         ),
         declare_namespace_cmd,
         declare_use_namespace_cmd,

@@ -1,7 +1,5 @@
-
+#!/usr/bin/env python3
 from geometry_msgs.msg import TransformStamped
-
-import numpy as np
 
 import rclpy
 from rclpy.node import Node
@@ -19,8 +17,6 @@ class FramePublisher(Node):
         # Initialize the transform broadcaster
         self.tf_broadcaster = TransformBroadcaster(self)
 
-        # Subscribe to a turtle{1}{2}/pose topic and call handle_turtle_pose
-        # callback function on each message
         self.subscription = self.create_subscription(
             Odometry, '/odom',
             self.odom_callback,
@@ -30,10 +26,7 @@ class FramePublisher(Node):
     def odom_callback(self, msg: Odometry):
         t = TransformStamped()
 
-        # Read message content and assign it to
-        # corresponding tf variables
-        # t.header.stamp = msg.header.stamp
-        t.header.stamp = self.get_clock().now().to_msg()
+        t.header.stamp = msg.header.stamp
         t.header.frame_id = 'odom'
         t.child_frame_id = 'base_footprint'
 
