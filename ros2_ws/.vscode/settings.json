@@ -1,0 +1,18 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/tristan/repositories/master-thesis/ros2_ws/build/stage_ros2_scripts",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/stage_ros2_scripts/lib/python3.10/site-packages",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/context_aware_navigation/local/lib/python3.10/dist-packages",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/multi_person_tracker_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/tristan/repositories/master-thesis/ros2_ws/build/stage_ros2_scripts",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/stage_ros2_scripts/lib/python3.10/site-packages",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/context_aware_navigation/local/lib/python3.10/dist-packages",
+        "/home/tristan/repositories/master-thesis/ros2_ws/install/multi_person_tracker_interfaces/local/lib/python3.10/dist-packages",
+        "/opt/ros/humble/lib/python3.10/site-packages",
+        "/opt/ros/humble/local/lib/python3.10/dist-packages"
+    ]
+}
