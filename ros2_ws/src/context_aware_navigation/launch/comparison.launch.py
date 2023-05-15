@@ -79,6 +79,7 @@ def generate_launch_description():
         robot_desc = infp.read()
 
     bringup_cmd = IncludeLaunchDescription(
+
         PythonLaunchDescriptionSource(
             os.path.join(launch_dir, 'bringup_launch.py')),
         launch_arguments={'namespace': namespace,
@@ -92,6 +93,7 @@ def generate_launch_description():
                           'use_respawn': use_respawn}.items())
 
     return LaunchDescription([
+        SetParameter(name='output', value="screen"),
         declare_map_yaml_cmd,
         declare_namespace_cmd,
         declare_use_namespace_cmd,

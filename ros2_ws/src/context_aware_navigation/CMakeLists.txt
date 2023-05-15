@@ -64,8 +64,7 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
-
-pluginlib_export_plugin_description_file(context_aware_navigation layers.xml)
+pluginlib_export_plugin_description_file(nav2_costmap_2d layers.xml)
 ament_target_dependencies(${PROJECT_NAME} ${dep_pkgs})
 
 ament_package()

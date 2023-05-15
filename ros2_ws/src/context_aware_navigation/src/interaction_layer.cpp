@@ -11,10 +11,6 @@ namespace context_aware_navigation
 {
 
     InteractionLayer::InteractionLayer()
-        : last_min_x_(-std::numeric_limits<float>::max()),
-          last_min_y_(-std::numeric_limits<float>::max()),
-          last_max_x_(std::numeric_limits<float>::max()),
-          last_max_y_(std::numeric_limits<float>::max())
     {
     }
 
@@ -28,13 +24,13 @@ namespace context_aware_navigation
         declareParameter("enabled", rclcpp::ParameterValue(true));
         node->get_parameter(name_ + "." + "enabled", enabled_);
 
-        need_recalculation_ = false;
-        current_ = true;
+
 
         interaction_cost = node->declare_parameter<float>("interaction_map_size", 125.0);
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+        current_ = true;
     }
 
     // The method is called to ask the plugin: which area of costmap it needs to update.
@@ -45,35 +41,25 @@ namespace context_aware_navigation
         double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/, double *min_x,
         double *min_y, double *max_x, double *max_y)
     {
-        if (need_recalculation_)
+        if (BoundingBox != nullptr)
         {
-            last_min_x_ = *min_x;
-            last_min_y_ = *min_y;
-            last_max_x_ = *max_x;
-            last_max_y_ = *max_y;
-            // For some reason when I make these -<double>::max() it does not
-            // work with Costmap2D::worldToMapEnforceBounds(), so I'm using
-            // -<float>::max() instead.
-            *min_x = -std::numeric_limits<float>::max();
-            *min_y = -std::numeric_limits<float>::max();
-            *max_x = std::numeric_limits<float>::max();
-            *max_y = std::numeric_limits<float>::max();
-            need_recalculation_ = false;
-        }
-        else
-        {
-            double tmp_min_x = last_min_x_;
-            double tmp_min_y = last_min_y_;
-            double tmp_max_x = last_max_x_;
-            double tmp_max_y = last_max_y_;
-            last_min_x_ = *min_x;
-            last_min_y_ = *min_y;
-            last_max_x_ = *max_x;
-            last_max_y_ = *max_y;
-            *min_x = std::min(tmp_min_x, *min_x);
-            *min_y = std::min(tmp_min_y, *min_y);
-            *max_x = std::max(tmp_max_x, *max_x);
-            *max_y = std::max(tmp_max_y, *max_y);
+            if (BoundingBox->center_x-BoundingBox->width/2< *min_x)
+            {
+                *min_x =BoundingBox->center_x-BoundingBox->width/2;
+            }
+            if (BoundingBox->center_x+BoundingBox->width/2> *max_x)
+            {
+                *max_x =BoundingBox->center_x+BoundingBox->width/2;
+            }
+            if (BoundingBox->center_y-BoundingBox->height/2< *min_y)
+            {
+                *min_y =BoundingBox->center_x-BoundingBox->height/2;
+            }
+            if (BoundingBox->center_y+BoundingBox->height/2> *max_y)
+            {
+                *max_y =BoundingBox->center_y+BoundingBox->height/2;
+            }
+
         }
     }
     void
