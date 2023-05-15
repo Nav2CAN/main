@@ -52,6 +52,7 @@ install(PROGRAMS
   scripts/detectContextNode.py
   scripts/stage_joints.py
   scripts/odom_tf_publisher.py
+  scripts/people_publisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
