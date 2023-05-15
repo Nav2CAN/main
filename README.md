@@ -104,6 +104,13 @@ cd ros2_ws/
 colcon build --symlink-install --cmake-args -DOpenGL_GL_PREFERENCE=LEGACY
 colcon build --symlink-install --packages-select stage_ros2
 ```
+
+
+# Running simulation with ros1_bridge
+The comparison used in this project runs in ROS melodic while the navigation stack is developed for ROS2 Humble. Therefore, a ros1_bridge is used with parameteres. These are found in *ros2_ws*.
+The **ros_bridge.sh** script will source and load all necessary files before running the bridge but must be configured to the setup of the used machine.
+
+
 # Issues
 in case of docker error like:
 ```

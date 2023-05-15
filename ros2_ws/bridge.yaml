@@ -1,0 +1,50 @@
+topics:
+  -
+    topic: /base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /base_scan  # Topic name on both ROS 1 and ROS 2
+    type: sensor_msgs/msg/LaserScan  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /clock  # Topic name on both ROS 1 and ROS 2
+    type: rosgraph_msgs/msg/Clock  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /human1/cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human2/cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human1/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human2/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human1/odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human2/odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+    qos:
+      history: keep_last
+      depth: 10
+      durability: reliable
+      durability: transient_local
