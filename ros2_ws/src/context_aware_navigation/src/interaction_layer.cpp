@@ -2,7 +2,9 @@
 #include <math.h>
 #include "nav2_costmap_2d/costmap_math.hpp"
 #include "nav2_costmap_2d/footprint.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "rclcpp/parameter_events_filter.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
 using nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
 using nav2_costmap_2d::LETHAL_OBSTACLE;
 using nav2_costmap_2d::NO_INFORMATION;
@@ -10,9 +12,7 @@ using nav2_costmap_2d::NO_INFORMATION;
 namespace context_aware_navigation
 {
 
-    InteractionLayer::InteractionLayer()
-    {
-    }
+    InteractionLayer::InteractionLayer(){}
 
     // This method is called at the end of plugin initialization.
     // It contains ROS parameter(s) declaration and initialization
@@ -21,15 +21,20 @@ namespace context_aware_navigation
     InteractionLayer::onInitialize()
     {
         auto node = node_.lock();
+        if (!node) {
+            throw std::runtime_error{"Failed to lock node"};
+        }
         declareParameter("enabled", rclcpp::ParameterValue(true));
+        declareParameter("interaction_cost", rclcpp::ParameterValue(150.0));
+        declareParameter("keeptime", rclcpp::ParameterValue(2.0));
         node->get_parameter(name_ + "." + "enabled", enabled_);
-
-
-
-        interaction_cost = node->declare_parameter<float>("interaction_map_size", 125.0);
+        node->get_parameter(name_ + "." + "interaction_cost", interaction_cost);
+        node->get_parameter(name_ + "." + "keeptime", keeptime);
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
+        interaction_sub_ = node->create_subscription<multi_person_tracker_interfaces::msg::BoundingBox>(
+        "/interaction_bb", 10, std::bind(&InteractionLayer::interactionCallback, this, std::placeholders::_1));
         current_ = true;
     }
 
@@ -41,45 +46,52 @@ namespace context_aware_navigation
         double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/, double *min_x,
         double *min_y, double *max_x, double *max_y)
     {
+        //figure out the zone where we want to draw the ellipse
+        
         if (BoundingBox != nullptr)
         {
-            if (BoundingBox->center_x-BoundingBox->width/2< *min_x)
+            float minx=BoundingBox->center_x-BoundingBox->width/(2*resolution_);
+            float maxx=BoundingBox->center_x+BoundingBox->width/(2*resolution_);
+            float miny=BoundingBox->center_y-BoundingBox->height/(2*resolution_);
+            float maxy=BoundingBox->center_y+BoundingBox->height/(2*resolution_);
+
+            if (minx < *min_x)
             {
-                *min_x =BoundingBox->center_x-BoundingBox->width/2;
+                *min_x =minx;
             }
-            if (BoundingBox->center_x+BoundingBox->width/2> *max_x)
+            if (maxx > *max_x)
             {
-                *max_x =BoundingBox->center_x+BoundingBox->width/2;
+                *max_x =maxx;
             }
-            if (BoundingBox->center_y-BoundingBox->height/2< *min_y)
+            if (miny < *min_y)
             {
-                *min_y =BoundingBox->center_x-BoundingBox->height/2;
+                *min_y =miny;
             }
-            if (BoundingBox->center_y+BoundingBox->height/2> *max_y)
+            if (maxy > *max_y)
             {
-                *max_y =BoundingBox->center_y+BoundingBox->height/2;
+                *max_y =maxy;
             }
 
         }
-    }
+        auto node = node_.lock();
+        if (!node) {
+            throw std::runtime_error{"Failed to lock node"};
+        }
+
+        RCLCPP_DEBUG(
+            node->get_logger(),
+            "Update bounds: Min x: %f Min y: %f Max x: %f Max y: %f", *min_x,
+            *min_y, *max_x, *max_y);
+            }
     void
     InteractionLayer::interactionCallback(
       multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message)
     {
+        auto node = node_.lock();
+        if (!node) {
+            throw std::runtime_error{"Failed to lock node"};
+        }
         BoundingBox=message;
-    }
-
-    // The method is called when footprint was changed.
-    // Here it just resets need_recalculation_ variable.
-    void
-    InteractionLayer::onFootprintChanged()
-    {
-        need_recalculation_ = true;
-
-        RCLCPP_DEBUG(rclcpp::get_logger(
-                         "nav2_costmap_2d"),
-                     "InteractionLayer::onFootprintChanged(): num footprint points: %lu",
-                     layered_costmap_->getFootprint().size());
     }
 
     // The method is called when costmap recalculation is required.
@@ -105,30 +117,65 @@ namespace context_aware_navigation
         matchSize();
         uint8_t *costmap_array = getCharMap();
         unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
-
         min_i = std::max(0, min_i);
         min_j = std::max(0, min_j);
         max_i = std::min(static_cast<int>(size_x), max_i);
         max_j = std::min(static_cast<int>(size_y), max_j);
-
+        geometry_msgs::msg::TransformStamped t;
+        geometry_msgs::msg::PoseStamped poseIn, poseOut;
         // center of costmap layer
-        
-        uint x1,y1;
+        std::string global_frame_ = layered_costmap_->getGlobalFrameID();
+        int x1,y1;
+        if (BoundingBox != nullptr)
+        {
+            //only write ellipses that are not too old
+            if(node->now().seconds()-BoundingBox->header.stamp.sec<keeptime){
+                //create stamped pose of the bounding box in the message frame (most likely map)
+                poseIn.header=BoundingBox->header;
+                poseIn.pose.position.x=BoundingBox->center_x;
+                poseIn.pose.position.y=BoundingBox->center_y;
+                poseIn.pose.position.z=0;
+                tf2::Quaternion q;
+                q.setRPY(0,0,0);//bounding boxes are never rotated
+                q=q.normalize();
+                poseIn.pose.orientation.x=q.x();
+                poseIn.pose.orientation.y=q.y();
+                poseIn.pose.orientation.z=q.z();
+                poseIn.pose.orientation.w=q.w();
 
-        //get coordinates of interaction in the costmap
-        bool valid=worldToMap(BoundingBox->center_x,BoundingBox->center_y,x1,y1);
+                //transform the pose from the message frame into the global frame of the costmap
+                try {
+                    tf_buffer->transform(poseIn,poseOut,global_frame_,tf2::durationFromSec(5.0));
+                } catch (const tf2::TransformException & ex) {
+                RCLCPP_INFO(
+                    node->get_logger(), "Could not transform %s to %s: %s",
+                    global_frame_.c_str(), BoundingBox->header.frame_id.c_str(), ex.what());
+                return;
+                }
+                q = tf2::Quaternion(
+                        poseOut.pose.orientation.x,
+                        poseOut.pose.orientation.y,
+                        poseOut.pose.orientation.z,
+                        poseOut.pose.orientation.w);
+                tf2::Matrix3x3 m(q);
+                double roll, pitch, yaw;
+                m.getRPY(roll, pitch, yaw);
 
-        if (valid==true){
-            cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
-            cv::Point center = cv::Point(x1,y1);
-            cv::Point size = cv::Size(BoundingBox->width,BoundingBox->height);
-            cv::ellipse(cv_costmap,center,size,0,0,360,interaction_cost,-1);//draw interaction as ellipse
+                //get coordinates of the center without bounding it so we can draw an ellipse outside of bounds of the cv::Mat
+                worldToMapNoBounds(poseOut.pose.position.x,poseOut.pose.position.y,x1,y1);
+                cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
 
-            costmap_array=cv_costmap.data;//write the array to the costmap
-            updateWithMax(master_grid, min_i, min_j, max_i, max_j); //update with max
-            current_ = true;
+                //draw ellipse into cv::Mat
+                cv::Point center = cv::Point(x1,y1);
+                cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBox->width/resolution_)),static_cast <int> (std::floor(BoundingBox->height/resolution_)));
+                cv::ellipse(cv_costmap,center,size,yaw*(180/M_PI),0,360,interaction_cost,-1);//draw interaction as ellipseat the correct angle
+
+                //write the array to the costmap
+                costmap_array=cv_costmap.data;
+                updateWithMax(master_grid, min_i, min_j, max_i, max_j); //update with max
+                current_ = true;
+            }
         }
-
     }
 } // namespace nav2_gradient_costmap_plugin
 

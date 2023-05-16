@@ -195,6 +195,7 @@ local_costmap:
       # social_layer:
       #   plugin: "context_aware_navigation::SocialLayer"
       #   enabled: True
+      
       interaction_layer:
         plugin: "context_aware_navigation::InteractionLayer"
         enabled: True
