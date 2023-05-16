@@ -20,15 +20,7 @@ topics:
     type: geometry_msgs/msg/Twist  # Type of topic to bridge
     queue_size: 1 
   -
-    topic: /human2/cmd_vel  # Topic name on both ROS 1 and ROS 2
-    type: geometry_msgs/msg/Twist  # Type of topic to bridge
-    queue_size: 1 
-  -
     topic: /human1/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
-    type: nav_msgs/msg/Odometry  # Type of topic to bridge
-    queue_size: 1 
-  -
-    topic: /human2/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
     type: nav_msgs/msg/Odometry  # Type of topic to bridge
     queue_size: 1 
   -
@@ -36,7 +28,39 @@ topics:
     type: nav_msgs/msg/Odometry  # Type of topic to bridge
     queue_size: 1 
   -
+    topic: /human2/cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human2/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
     topic: /human2/odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /human3/cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human3/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human3/odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /human4/cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human4/base_pose_ground_truth  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /human4/odom  # Topic name on both ROS 1 and ROS 2
     type: nav_msgs/msg/Odometry  # Type of topic to bridge
     queue_size: 1
   -

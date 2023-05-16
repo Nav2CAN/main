@@ -68,7 +68,11 @@ if __name__ == '__main__':
 
     rclpy.init(args=sys.argv)
     nh = sys.argv[1]
-    humans = StagePeople(num_hum=int(nh))
+    if len(sys.argv) == 3:
+        test_name = sys.argv[2]
+    else:
+        test_name = "test"
+    humans = StagePeople(num_hum=int(nh), test_name=test_name)
     rclpy.spin(humans)
 
     humans.destroy_node()

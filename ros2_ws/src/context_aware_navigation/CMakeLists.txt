@@ -54,6 +54,7 @@ install(PROGRAMS
   scripts/odom_tf_publisher.py
   scripts/people_publisher.py
   scripts/measureTraveledDistance.py
+  scripts/distToPeople.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

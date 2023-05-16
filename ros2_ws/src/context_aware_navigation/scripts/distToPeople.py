@@ -63,9 +63,10 @@ class StagePeople(Node):
             for person in self.people:
                 dist = ((x - person.position.x)**2 + (y - person.position.y)**2)**0.5
                 dists.append(dist)
-
+            # print(dists)
             append_to_csv(self.test_name, dists)
-        except:
+        except Exception as e:
+            # print(f"Exception: {e}")
             pass
 
 
@@ -73,7 +74,12 @@ if __name__ == '__main__':
 
     rclpy.init(args=sys.argv)
     nh = sys.argv[1]
-    humans = StagePeople(num_hum=int(nh))
+    if len(sys.argv) == 3:
+        test_name = sys.argv[2]
+    else:
+        test_name = "test"
+
+    humans = StagePeople(num_hum=int(nh), test_name=test_name)
     rclpy.spin(humans)
 
     humans.destroy_node()
