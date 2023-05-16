@@ -53,7 +53,11 @@ class Odometer(Node):
 if __name__ == '__main__':
 
     rclpy.init(args=sys.argv)
-    odometer = Odometer()
+    if len(sys.argv) == 2:
+        test_name = sys.argv[1]
+    else:
+        test_name = "test"
+    odometer = Odometer(test_name=test_name)
     rclpy.spin(odometer)
 
     odometer.destroy_node()
