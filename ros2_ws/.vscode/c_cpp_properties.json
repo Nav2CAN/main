@@ -10,7 +10,8 @@
         "/opt/ros/humble/include/**",
         "/home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/include/**",
         "/home/tristan/repositories/master-thesis/ros2_ws/src/stage_ros2/include/**",
-        "/usr/include/**"
+        "/usr/include/**",
+        "/usr/lib/**"
       ],
       "name": "ROS",
       "intelliSenseMode": "gcc-x64",
