@@ -22,26 +22,21 @@ class SocialLayer : public nav2_costmap_2d::CostmapLayer
 public:
   SocialLayer();
 
-  virtual void onInitialize();
-  virtual void updateBounds(
+  void onInitialize();
+  void updateBounds(
     double robot_x, double robot_y, double robot_yaw, double * min_x,
     double * min_y,
     double * max_x,
     double * max_y);
-  virtual void updateCosts(
+  void updateCosts(
     nav2_costmap_2d::Costmap2D & master_grid,
-    int min_i, int min_j, int max_i, int max_j);
+    int min_i, int min_j, int max_i, int max_j) override;
 
-  virtual void reset()
-  {
-    return;
-  }
+  void reset() override{}
 
-  virtual void onFootprintChanged();
-
-  virtual bool isClearable() {return false;}
-
-  virtual void imageCallback(
+  void onFootprintChanged();
+  bool isClearable() override {return true;}
+  void imageCallback(
       sensor_msgs::msg::Image::ConstSharedPtr message);
 
 

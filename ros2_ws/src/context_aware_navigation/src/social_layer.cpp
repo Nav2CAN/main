@@ -10,13 +10,7 @@ using nav2_costmap_2d::NO_INFORMATION;
 namespace context_aware_navigation
 {
 
-    SocialLayer::SocialLayer()
-        : last_min_x_(-std::numeric_limits<float>::max()),
-          last_min_y_(-std::numeric_limits<float>::max()),
-          last_max_x_(std::numeric_limits<float>::max()),
-          last_max_y_(std::numeric_limits<float>::max())
-    {
-    }
+    SocialLayer::SocialLayer(){}
 
     // This method is called at the end of plugin initialization.
     // It contains ROS parameter(s) declaration and initialization
@@ -25,11 +19,12 @@ namespace context_aware_navigation
     SocialLayer::onInitialize()
     {
         auto node = node_.lock();
+        if (!node) {
+            throw std::runtime_error{"Failed to lock node"};
+        }
+
         declareParameter("enabled", rclcpp::ParameterValue(true));
         node->get_parameter(name_ + "." + "enabled", enabled_);
-
-        need_recalculation_ = false;
-        current_ = true;
 
         target_frame = node->declare_parameter<std::string>("target_frame", "map");
         base_frame = layered_costmap_->getGlobalFrameID();
@@ -85,6 +80,10 @@ namespace context_aware_navigation
     void
     SocialLayer::imageCallback(sensor_msgs::msg::Image::ConstSharedPtr message)
     {
+        auto node = node_.lock();
+        if (!node) {
+            throw std::runtime_error{"Failed to lock node"};
+        }
         cv_bridge::CvImagePtr cv_ptr;
         // convert iamge message
         try
