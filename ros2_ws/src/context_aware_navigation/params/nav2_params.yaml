@@ -191,7 +191,13 @@ local_costmap:
       height: 15
       resolution: 0.1
       robot_radius: 0.34
-      plugins: ["voxel_layer", "inflation_layer"]
+      plugins: ["voxel_layer", "inflation_layer","interaction_layer"]
+      # social_layer:
+      #   plugin: "context_aware_navigation::SocialLayer"
+      #   enabled: True
+      interaction_layer:
+        plugin: "context_aware_navigation::InteractionLayer"
+        enabled: True
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0

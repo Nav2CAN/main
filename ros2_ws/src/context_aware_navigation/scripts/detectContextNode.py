@@ -22,6 +22,7 @@ from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
+
 class Detector(Node):
     '''
     Class interaction detection of people using Nvidia jetson Orin in ROS2
@@ -78,7 +79,8 @@ class Detector(Node):
         self.old_img_b = 1
 
         # ROS2 subscriber and publisher setup
-        self.interaction_publisher = self.create_publisher(BoundingBox, '/interaction_bb', 10)
+        self.interaction_publisher = self.create_publisher(
+            BoundingBox, '/interaction_bb', 10)
 
         self.bridge = CvBridge()
         super().__init__('context_aware_detector')
@@ -88,22 +90,22 @@ class Detector(Node):
             self.social_zone_callback,
             10)
         self.subscription  # prevent unused variable warning
-                # tf listener stuff so we can transform people into there
+        # tf listener stuff so we can transform people into there
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
 
     def social_zone_callback(self, msg):
         try:
-            #TODO assign correct tf_frames // should be from map to base_link or base_footprint
+            # TODO assign correct tf_frames // should be from map to base_link or base_footprint
             t = self.tf_buffer.lookup_transform(
-            "camera_link",
-            "camera_link",
-            rclpy.time.Time())
+                "base_link",
+                "map",
+                rclpy.time.Time())
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform base_link to map: {ex}')
             return
-        
+
         try:
 
             im0s = self.bridge.imgmsg_to_cv2(
@@ -123,21 +125,19 @@ class Detector(Node):
             class_ID, x, y, w, h, confi = self.detect(im0s, img)
             if class_ID != None:
 
-                tf = (0, 0)  # TODO add tf functionality for transforming map
-
                 # put center value in middle of map and convert to meters
-                x = tf[0] + (x - 0.5) * im0s.shape[1] * self.map_size
+                x = (x - 0.5) * im0s.shape[1] * self.map_size
                 # put center value in middle of map and convert to meters
-                y = tf[1] + (y - 0.5) * im0s.shape[0] * self.map_size
+                y = (y - 0.5) * im0s.shape[0] * self.map_size
 
                 w = w * im0s.shape[1] * self.map_size  # transform to meters
                 h = h * im0s.shape[0] * self.map_size  # transform to meters
-                
-                #transform center coordinates into /map frame
-                #orientation does not matter since the two maps are x,y-colinear 
+
+                # transform center coordinates into /map frame
+                # orientation does not matter since the two maps are x,y-colinear
 
                 bb = BoundingBox()
-                bb.header=msg.header
+                bb.header = msg.header
                 bb.center_x = x + t.transform.translation.x
                 bb.center_y = y + t.transform.translation.y
                 bb.width = w
