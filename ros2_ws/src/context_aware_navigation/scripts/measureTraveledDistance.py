@@ -47,7 +47,7 @@ class Odometer(Node):
         self.prev_x = float(msg.pose.pose.position.x)
         self.prev_y = float(msg.pose.pose.position.y)
         
-        overwrite_csv(self.test_name, self.total_dist)
+        overwrite_csv(self.test_name, [self.total_dist])
 
 
 if __name__ == '__main__':
