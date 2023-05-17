@@ -15,19 +15,29 @@ find_package(nav2_common REQUIRED)
 find_package(navigation2 REQUIRED)
 find_package(multi_person_tracker_interfaces)
 find_package(sensor_msgs)
+find_package(geometry_msgs)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 
-
+add_compile_options(-g)
 set(dep_pkgs
     rclcpp
     nav2_costmap_2d
     OpenCV
     cv_bridge
     multi_person_tracker_interfaces
-    pluginlib)
+    geometry_msgs
+    pluginlib
+    tf2
+    tf2_geometry_msgs
+    tf2_ros
+    tf2_sensor_msgs)
 
 
 
@@ -54,6 +64,7 @@ install(PROGRAMS
   scripts/odom_tf_publisher.py
   scripts/people_publisher.py
   scripts/measureTraveledDistance.py
+  scripts/distToPeople.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

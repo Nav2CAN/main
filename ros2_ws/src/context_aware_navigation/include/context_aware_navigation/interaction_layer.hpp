@@ -9,6 +9,7 @@
 #include "nav2_costmap_2d/costmap_layer.hpp"
 
 #include "sensor_msgs/msg/image.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "opencv4/opencv2/opencv.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include "tf2_ros/transform_listener.h"
@@ -22,38 +23,36 @@ class InteractionLayer : public nav2_costmap_2d::CostmapLayer
 public:
   InteractionLayer();
 
-  virtual void onInitialize();
-  virtual void updateBounds(
+  void onInitialize();
+  void updateBounds(
     double robot_x, double robot_y, double robot_yaw, double * min_x,
     double * min_y,
     double * max_x,
     double * max_y);
-  virtual void updateCosts(
+  void updateCosts(
     nav2_costmap_2d::Costmap2D & master_grid,
-    int min_i, int min_j, int max_i, int max_j);
+    int min_i, int min_j, int max_i, int max_j) override;
 
-  virtual void reset()
-  {
-    return;
-  }
+  void reset() override{}
 
-  virtual void onFootprintChanged();
 
-  virtual bool isClearable() {return false;}
+  bool isClearable() override {return true;}
 
-  virtual void interactionCallback(
+  void interactionCallback(
       multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message);
 
 
 
 
-protected:
+private:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   bool need_recalculation_;
   float interaction_cost;
+  float keeptime;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
+  rclcpp::Subscription<multi_person_tracker_interfaces::msg::BoundingBox>::ConstSharedPtr interaction_sub_;
   multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr BoundingBox;
 };
 

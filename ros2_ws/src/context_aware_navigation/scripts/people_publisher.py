@@ -14,16 +14,13 @@ class StagePeople(Node):
     def __init__(self, num_hum):
         super().__init__('stage_people_publisher')
         self.num_hum = num_hum
-        self.people_pub = []
-        self.updated_people = []
+        self.people_pub = [0 for i in range(self.num_hum)]
+        self.updated_people = [False for i in range(self.num_hum)]
         self.people_publisher = self.create_publisher(People, '/stage_people', 10)
 
-        for person in range(self.num_hum):
-            self.people_pub.append(0)
-            self.updated_people.append(False)
 
         self.people_marker_sub = []
-        for human_id in range(1,self.num_hum+1):
+        for human_id in range(1, self.num_hum + 1):
             name = 'human'+str(human_id)
             subscription = self.create_subscription(
             Odometry,
