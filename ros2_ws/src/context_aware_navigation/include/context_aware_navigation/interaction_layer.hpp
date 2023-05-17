@@ -36,7 +36,7 @@ public:
   void reset() override{}
 
 
-  bool isClearable() override {return true;}
+  bool isClearable() override {return false;}
 
   void interactionCallback(
       multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message);

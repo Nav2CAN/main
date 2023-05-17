@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import rclpy
+import sys
 from rclpy.node import Node
 
 from tf2_ros import TransformException
@@ -19,19 +20,20 @@ from context_aware_navigation.asymetricGausian import *
 
 class SocialMapGenerator(Node):
 
-    def __init__(self, height, width, density):
+    def __init__(self, height, width, density, maxcost):
         super().__init__('social_map_generator')
         self.width = width
         self.height = height
         self.density = density  # px/m
         self.socialCostSize = 4
+        self.maxcost = maxcost
         # %standard diviations %adjust to get different shapes
         self.sigmaFront = 2
         self.sigmaSide = 4/3
         self.sigmaBack = 1
         self.velocities = np.array([0])
         self.socialZones = initSocialZones(
-            self.density, 2, 4/3, 1, self.velocities, self.socialCostSize)
+            self.density, 2, self.velocities, self.maxcost, self.socialCostSize)  # 4/3, 1,
 
         self.center = ((self.width*self.density)/2,
                        (self.height*self.density)/2)
@@ -123,14 +125,14 @@ class SocialMapGenerator(Node):
             self.socialMap, encoding="passthrough", header=msg.header))
 
 
-def main(args=None):
+def main(args=sys.argv):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator(15, 15, 0.1)
+    social_map_generator = SocialMapGenerator(15, 15, 0.1, int(args[1]))
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()
 
 
 if __name__ == '__main__':
-    main()
+    main(args=sys.argv)

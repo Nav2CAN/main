@@ -34,7 +34,7 @@ public:
 
   void reset() override{}
 
-  bool isClearable() override {return true;}
+  bool isClearable() override {return false;}
 
   void imageCallback(
       sensor_msgs::msg::Image::ConstSharedPtr message);

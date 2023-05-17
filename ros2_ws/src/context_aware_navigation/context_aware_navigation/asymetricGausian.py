@@ -4,13 +4,13 @@ import numpy as np
 
 
 @jit
-def initSocialZones(density, sigmaFront, sigmaSide, sigmaBack, velocities, plotsize=3):
+def initSocialZones(density, sigmaFront, velocities, maxcost, plotsize=3):
     x = np.arange(-plotsize, plotsize, density)  # [m]
     y = np.arange(-plotsize, plotsize, density)
     zones = []
     for vel in velocities:
         zones.append(makeProxemicZone(
-            0, 0, x, y, 0, sigmaFront+(1*vel), sigmaSide, sigmaBack))  # TODO only apply velocity if its negative
+            0, 0, x, y, 0, sigmaFront+(1*vel), maxcost))  # TODO only apply velocity if its negative
     return zones
 
 
@@ -33,21 +33,21 @@ def asymetricGaus(x=0, y=0, x0=0, y0=0, theta=0, sigmaFront=2, sigmaSide=4/3, si
 
 
 @jit
-def makeProxemicZone(x0, y0, x, y, theta, sigmaFront, sigmaSide, sigmaBack) -> np.ndarray:
+def makeProxemicZone(x0, y0, x, y, theta, sigmaFront, maxcost) -> np.ndarray:
     social: np.ndarray = np.zeros((len(x), len(y)), dtype=np.uint8)
     for i in range(len(x)):
         for j in range(len(y)):
             social[j, i] = thresholdCost(asymetricGaus(
-                x[i], y[j], x0, y0, theta, sigmaFront))
+                x[i], y[j], x0, y0, theta, sigmaFront), maxcost)
     return social
 
 
 @jit
-def thresholdCost(cost: float) -> float:
+def thresholdCost(cost: float, maxcost: float) -> float:
     if cost > asymetricGaus(y=0.5):
-        return 255
+        return maxcost
     if cost > asymetricGaus(y=1.0):
-        return np.floor(255*asymetricGaus(y=1.0))
+        return np.floor(maxcost*asymetricGaus(y=1.0))
     if cost > asymetricGaus(y=1.5):
-        return cost*255
+        return cost*maxcost
     return 0

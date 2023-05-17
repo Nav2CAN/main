@@ -145,7 +145,8 @@ def generate_launch_description():
         Node(
             package="context_aware_navigation",
             executable="social_map_generator.py",
-            parameters=[{"use_sim_time": use_sim_time}]
+            parameters=[{"use_sim_time": use_sim_time}],
+            arguments=["253"]
         ),
         Node(
             package="context_aware_navigation",
