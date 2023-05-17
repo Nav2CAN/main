@@ -5,11 +5,14 @@ from rclpy.node import Node
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
+import tf2_geometry_msgs
+from tf_transformations import quaternion_about_axis, euler_from_quaternion
 
 import numpy as np
 from scipy.ndimage import rotate
 from multi_person_tracker_interfaces.msg import People
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge
 from context_aware_navigation.asymetricGausian import *
 
@@ -20,7 +23,7 @@ class SocialMapGenerator(Node):
         super().__init__('social_map_generator')
         self.width = width
         self.height = height
-        self.density = density
+        self.density = density  # px/m
         self.socialCostSize = 4
         # %standard diviations %adjust to get different shapes
         self.sigmaFront = 2
@@ -48,11 +51,12 @@ class SocialMapGenerator(Node):
 
     def people_callback(self, msg: People):
         # get the latest transform between the robot and the map
-        #TODO assign correct tf_frames
+        # TODO assign correct tf_frames
+
         try:
             t = self.tf_buffer.lookup_transform(
-                "camera_link",
-                "camera_link",
+                "map",
+                "base_link",
                 rclpy.time.Time())
         except TransformException as ex:
             self.get_logger().info(
@@ -64,21 +68,41 @@ class SocialMapGenerator(Node):
         self.center = (np.shape(self.socialMap)[
                        0]/2, np.shape(self.socialMap)[1]/2)  # [px]
         for person in msg.people:
+            # transform person into map frame
+            personPose = PoseStamped()
+            personPose.header = msg.header
+            personPose.pose.position.x = person.position.x
+            personPose.pose.position.y = person.position.y
+            personPose.pose.position.z = 0.0
+            quad = quaternion_about_axis(person.position.z, (0, 0, 1))
+            personPose.pose.orientation.x = quad[0]
+            personPose.pose.orientation.y = quad[1]
+            personPose.pose.orientation.z = quad[2]
+            personPose.pose.orientation.w = quad[3]
+            personOut = self.tf_buffer.transform(
+                personPose, "map", rclpy.time.Duration(seconds=5.0))
             # make the person position relative to the non rotating robot
-            X = int(np.floor((person.position.x - t.transform.translation.x) /
+
+            X = int(np.floor((personOut.pose.position.x - t.transform.translation.x) /
                              self.density))  # [px]
             Y = -int(
-                np.floor((person.position.y - t.transform.translation.y) / self.density))
+                np.floor((personOut.pose.position.y - t.transform.translation.y) / self.density))
+
+            print(f"robot persons x pixel {X}")
+            print(f"robot persons y pixel {Y}")
             if abs(X) < self.center[0] or abs(Y) < self.center[1]:
                 # transform relative to the top left corner of the map
                 X = int(np.floor((X + self.center[0])))
                 Y = int(np.floor((Y + self.center[1])))
-                # rotate LUT result for specific velocity
-                vel = (person.velocity.x*person.velocity.x +
-                       person.velocity.y*person.velocity.y)**0.5
-                idx = (np.abs(self.velocities - vel)).argmin()
+
+                quad = [
+                    personOut.pose.orientation.x,
+                    personOut.pose.orientation.y,
+                    personOut.pose.orientation.z,
+                    personOut.pose.orientation.w,
+                ]
                 social_zone = rotate(
-                    self.socialZones[idx], np.rad2deg(person.position.z), reshape=True)
+                    self.socialZones[0], np.rad2deg(euler_from_quaternion(quad)[2]), reshape=True)
 
                 (width, height) = np.shape(social_zone)
                 width = int(np.floor(width/2))
@@ -88,7 +112,6 @@ class SocialMapGenerator(Node):
                 maxx = min(np.shape(self.socialMap)[0], X+width)
                 miny = max(0, Y-height)
                 maxy = min(np.shape(self.socialMap)[1], Y+width)
-
                 roi = self.socialMap[miny:maxy, minx:maxx]
 
                 sminx = width - min(width, X)
@@ -100,7 +123,7 @@ class SocialMapGenerator(Node):
                 self.socialMap[miny:maxy, minx:maxx] = np.maximum(
                     roi, social_zone)
         self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
-            self.socialMap, encoding="passthrough",header=msg.header))
+            self.socialMap, encoding="passthrough", header=msg.header))
 
 
 def main(args=None):
