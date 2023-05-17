@@ -191,10 +191,10 @@ local_costmap:
       height: 15
       resolution: 0.1
       robot_radius: 0.34
-      plugins: ["voxel_layer", "inflation_layer","interaction_layer"]
-      # social_layer:
-      #   plugin: "context_aware_navigation::SocialLayer"
-      #   enabled: True
+      plugins: ["voxel_layer","social_layer"]
+      social_layer:
+        plugin: "context_aware_navigation::SocialLayer"
+        enabled: True
       
       interaction_layer:
         plugin: "context_aware_navigation::InteractionLayer"

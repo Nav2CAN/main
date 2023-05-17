@@ -87,9 +87,6 @@ class SocialMapGenerator(Node):
                              self.density))  # [px]
             Y = -int(
                 np.floor((personOut.pose.position.y - t.transform.translation.y) / self.density))
-
-            print(f"robot persons x pixel {X}")
-            print(f"robot persons y pixel {Y}")
             if abs(X) < self.center[0] or abs(Y) < self.center[1]:
                 # transform relative to the top left corner of the map
                 X = int(np.floor((X + self.center[0])))
@@ -129,7 +126,7 @@ class SocialMapGenerator(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator(15, 15, 0.05)
+    social_map_generator = SocialMapGenerator(15, 15, 0.1)
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()

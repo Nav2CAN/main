@@ -34,14 +34,14 @@ public:
 
   void reset() override{}
 
-  void onFootprintChanged();
   bool isClearable() override {return true;}
+
   void imageCallback(
       sensor_msgs::msg::Image::ConstSharedPtr message);
 
 
 
-protected:
+private:
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   bool need_recalculation_;

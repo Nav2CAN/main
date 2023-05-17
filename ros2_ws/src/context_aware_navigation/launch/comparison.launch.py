@@ -142,6 +142,17 @@ def generate_launch_description():
             arguments=[
                 '-d', [os.path.join(bringup_dir, 'config', 'comparison.rviz')]]
         ),
+        Node(
+            package="context_aware_navigation",
+            executable="social_map_generator.py",
+            parameters=[{"use_sim_time": use_sim_time}]
+        ),
+        Node(
+            package="context_aware_navigation",
+            executable="people_publisher.py",
+            parameters=[{"use_sim_time": use_sim_time}],
+            arguments=["2"]
+        ),
         # Node(
         #         package="tf2_ros",
         #         executable="static_transform_publisher",
