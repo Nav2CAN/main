@@ -47,7 +47,7 @@ def generate_launch_description():
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
         default_value=os.path.join(
-            bringup_dir, 'world', 'maps', 'turtlebot3_world.yaml'),
+            bringup_dir, 'world', 'maps', 'comparison.yaml'),
         description='Full path to map file to load')
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -57,7 +57,8 @@ def generate_launch_description():
 
     declare_params_file_cmd = DeclareLaunchArgument(
         'params_file',
-        default_value=os.path.join(bringup_dir, 'params', 'nav2_params_default.yaml'),
+        default_value=os.path.join(
+            bringup_dir, 'params', 'nav2_params.yaml'),
         description='Full path to the ROS2 parameters file to use for all launched nodes')
 
     declare_autostart_cmd = DeclareLaunchArgument(
@@ -104,34 +105,34 @@ def generate_launch_description():
         declare_use_composition_cmd,
         declare_use_respawn_cmd,
         bringup_cmd,
-        # SetParameter(
-        #     name='use_sim_time', value=True),
-        # Node(
-        #     package='robot_state_publisher',
-        #     executable='robot_state_publisher',
-        #     name='robot_state_publisher',
-        #     output='screen',
-        #     parameters=[{'use_sim_time': use_sim_time}],
-        #     arguments=[urdf]),
-        # Node(
-        #     name='joint_state_publisher',
-        #     package='joint_state_publisher',
-        #     executable='joint_state_publisher',
-        #     parameters=[
-        #         {'source_list': ["/stage_joint_states"], 'use_sim_time': use_sim_time}],
-        # ),
-        # Node(
-        #     name='stage_joints',
-        #     package='context_aware_navigation',
-        #     executable='stage_joints.py',
-        #     parameters=[{'use_sim_time': use_sim_time}],
-        # ),
-        # Node(
-        #     name='odom_tf_publisher',
-        #     package='context_aware_navigation',
-        #     executable='odom_tf_publisher.py',
-        #     parameters=[{'use_sim_time': use_sim_time}],
-        # ),
+        SetParameter(
+            name='use_sim_time', value=True),
+        Node(
+            package='robot_state_publisher',
+            executable='robot_state_publisher',
+            name='robot_state_publisher',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[urdf]),
+        Node(
+            name='joint_state_publisher',
+            package='joint_state_publisher',
+            executable='joint_state_publisher',
+            parameters=[
+                {'source_list': ["/stage_joint_states"], 'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            name='stage_joints',
+            package='context_aware_navigation',
+            executable='stage_joints.py',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
+        Node(
+            name='odom_tf_publisher',
+            package='context_aware_navigation',
+            executable='odom_tf_publisher.py',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),
         Node(
             package='rviz2',
             namespace='',
