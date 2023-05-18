@@ -1,10 +1,10 @@
-from utils.loss import SigmoidBin
-from utils.torch_utils import time_synchronized, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
+from interaction_detection.utils.loss import SigmoidBin
+from interaction_detection.utils.torch_utils import time_synchronized, fuse_conv_and_bn, model_info, scale_img, initialize_weights, \
     select_device, copy_attr
-from utils.general import make_divisible, check_file, set_logging
-from utils.autoanchor import check_anchor_order
-from models.experimental import *
-from models.common import *
+from interaction_detection.utils.general import make_divisible, check_file, set_logging
+from interaction_detection.utils.autoanchor import check_anchor_order
+from interaction_detection.models.experimental import *
+from interaction_detection.models.common import *
 import torch
 import argparse
 import logging

@@ -3,7 +3,7 @@ import random
 import torch
 import torch.nn as nn
 
-from models.common import Conv, DWConv
+from interaction_detection.models.common import Conv, DWConv
 #import context_aware_navigation.utils
 
 

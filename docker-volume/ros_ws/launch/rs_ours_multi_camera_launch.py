@@ -22,7 +22,7 @@
 # ros2 launch realsense2_camera rs_multi_camera_launch.py camera_name1:=D400 device_type2:=l5. device_type1:=d4..
 
 """Launch realsense2_camera node."""
-import rs_ours_launch
+
 import copy
 from launch import LaunchDescription
 import launch_ros.actions
@@ -33,6 +33,7 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 import sys
 import pathlib
 sys.path.append(str(pathlib.Path(__file__).parent.absolute()))
+import rs_ours_launch
 
 local_parameters = [{'name': 'camera_name1', 'default': 'camera1', 'description': 'left_camera', 'usb_port_id': '2-3.4', 'serial_no': '_834412071134'},
                     {'name': 'camera_name2', 'default': 'camera2', 'description': 'right_camera',
