@@ -137,7 +137,7 @@ namespace context_aware_navigation
             cv::Mat temp=cv_ptr->image;
             temp.convertTo(temp, CV_8UC1);
             cv::flip(temp,temp,0);
-            social_map_rotated = temp;
+            temp.copyTo(social_map_rotated);
         }
         catch (cv_bridge::Exception &e)
         {
@@ -170,27 +170,28 @@ namespace context_aware_navigation
         uint8_t *costmap_array = getCharMap();
         unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
 
-        min_i = 0;
-        min_j = 0;
-        max_i = size_x;
-        max_j = size_y;
+        // min_i = min_i;
+        // min_j = min_j;
+        // max_i = m;
+        // max_j = size_y;
 
         // if (social_map_rotated.data!=NULL){
                         // auto test = social_map_rotated.at<uchar>(center_image_j - (center_layer_j - j),center_image_i - (center_layer_i - i));
 
         if (social_map_rotated.data != NULL){
-            for (int j = min_j; j < max_j; j++) {
+            if (social_map_rotated.empty()!=true){
+                for (int j = min_j; j < max_j; j++) {
                 for (int i = min_i; i < max_i; i++) {
                     try{
                     int index = getIndex(i, j);
-
-                    costmap_array[index] = static_cast<uint8_t>(social_map_rotated.at<uchar>(j,i));
+                    uint8_t cost= static_cast<uint8_t>(social_map_rotated.at<uchar>(j,i));
+                    costmap_array[index] =cost;
             // This combin      es the master costmap with the current costmap by taking
             // the max across all costmaps.
                     }
                     catch(std::exception &e){return;}
                 }
-            }
+            }}
         }
         updateWithMax(master_grid, min_i, min_j, max_i, max_j);
         current_ = true;
