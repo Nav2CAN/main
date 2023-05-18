@@ -18,7 +18,7 @@ class FramePublisher(Node):
         self.tf_broadcaster = TransformBroadcaster(self)
 
         self.subscription = self.create_subscription(
-            Odometry, '/base_pose_ground_truth',
+            Odometry, '/odom',
             self.odom_callback,
             10)
         self.subscription  # prevent unused variable warning
