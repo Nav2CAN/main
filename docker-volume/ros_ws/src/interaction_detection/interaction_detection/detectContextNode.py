@@ -6,11 +6,10 @@ import numpy as np
 import cv2
 
 from models.experimental import attempt_load
-from context_aware_navigation.utils.datasets import letterbox
-from context_aware_navigation.utils.general import check_img_size, non_max_suppression, \
+from utils.datasets import letterbox
+from utils.general import check_img_size, non_max_suppression, \
     scale_coords, xyxy2xywh, set_logging
-
-from context_aware_navigation.utils.torch_utils import select_device, time_synchronized, TracedModel
+from utils.torch_utils import select_device, time_synchronized, TracedModel
 
 import rclpy
 from rclpy.node import Node
@@ -40,7 +39,7 @@ class Detector(Node):
     device: choose compute device
     '''
 
-    def __init__(self, weights='/home/jonathan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/yolov7-ContextNav.pt',
+    def __init__(self, weights='yolov7-ContextNav.pt',
                  img_size=320, map_size=15,
                  trace=True, augment=False, conf_thres=0.25, iou_thres=0.45,
                  classes=None, agnostic_nms=False, device=''):
