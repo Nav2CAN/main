@@ -5,11 +5,11 @@ import torch
 import numpy as np
 import cv2
 
-from models.experimental import attempt_load
-from utils.datasets import letterbox
-from utils.general import check_img_size, non_max_suppression, \
+from .models.experimental import attempt_load
+from .utils.datasets import letterbox
+from .utils.general import check_img_size, non_max_suppression, \
     scale_coords, xyxy2xywh, set_logging
-from utils.torch_utils import select_device, time_synchronized, TracedModel
+from .utils.torch_utils import select_device, time_synchronized, TracedModel
 
 import rclpy
 from rclpy.node import Node
@@ -39,10 +39,12 @@ class Detector(Node):
     device: choose compute device
     '''
 
-    def __init__(self, weights='yolov7-ContextNav.pt',
+    def __init__(self, weights='/docker-volume/ros_ws/src/interaction_detection/interaction_detection/yolov7-ContextNav.pt',
                  img_size=320, map_size=15,
                  trace=True, augment=False, conf_thres=0.25, iou_thres=0.45,
                  classes=None, agnostic_nms=False, device=''):
+        
+        super().__init__('context_aware_detector')
         self.weights, self.imgsz, self.trace = weights, img_size, trace
         self.augment, self.conf_thres, self.iou_thres = augment, conf_thres, iou_thres
         self.classes, self.agnostic_nms = classes, agnostic_nms
@@ -82,7 +84,6 @@ class Detector(Node):
             BoundingBox, '/interaction_bb', 10)
 
         self.bridge = CvBridge()
-        super().__init__('context_aware_detector')
         self.subscription = self.create_subscription(
             Image,
             '/social_map',
@@ -95,10 +96,9 @@ class Detector(Node):
 
     def social_zone_callback(self, msg):
         try:
-            # TODO assign correct tf_frames // should be from map to base_link or base_footprint
             t = self.tf_buffer.lookup_transform(
-                "base_link",
                 "map",
+                "base_link",
                 rclpy.time.Time())
         except TransformException as ex:
             self.get_logger().info(
@@ -122,23 +122,27 @@ class Detector(Node):
             img = np.ascontiguousarray(img)
 
             class_ID, x, y, w, h, confi = self.detect(im0s, img)
+            x=float(x)
+            y=float(y)
+            w=float(w)
+            h=float(h)
             if class_ID != None:
 
                 # put center value in middle of map and convert to meters
-                x = (x - 0.5) * im0s.shape[1] * self.map_size
+                x = (x - 0.5) * self.map_size
                 # put center value in middle of map and convert to meters
-                y = (y - 0.5) * im0s.shape[0] * self.map_size
+                y = (y - 0.5) * self.map_size
 
-                w = w * im0s.shape[1] * self.map_size  # transform to meters
-                h = h * im0s.shape[0] * self.map_size  # transform to meters
+                w = w * self.map_size  # transform to meters
+                h = h * self.map_size  # transform to meters
 
                 # transform center coordinates into /map frame
                 # orientation does not matter since the two maps are x,y-colinear
 
                 bb = BoundingBox()
                 bb.header = msg.header
-                bb.center_x = x + t.transform.translation.x
-                bb.center_y = y + t.transform.translation.y
+                bb.center_x = t.transform.translation.x + x
+                bb.center_y = t.transform.translation.y - y
                 bb.width = w
                 bb.height = h
 

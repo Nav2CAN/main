@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from . import general
+from interaction_detection.utils import general
 
 
 def fitness(x):
