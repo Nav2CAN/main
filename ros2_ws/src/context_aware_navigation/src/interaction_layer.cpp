@@ -170,7 +170,7 @@ namespace context_aware_navigation
 
                 //draw ellipse into cv::Mat
                 cv::Point center = cv::Point(x1,y1);
-                cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBox->width/resolution_)),static_cast <int> (std::floor(BoundingBox->height/resolution_)));
+                cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBox->width/(2*resolution_))),static_cast <int> (std::floor(BoundingBox->height/(2*resolution_))));
                 cv::ellipse(cv_costmap,center,size,yaw*(180/M_PI),0,360,interaction_cost,-1);//draw interaction as ellipseat the correct angle
 
                 //write the array to the costmap

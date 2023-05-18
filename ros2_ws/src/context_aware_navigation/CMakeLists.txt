@@ -59,7 +59,6 @@ ament_python_install_package(${PROJECT_NAME})
 # Install python executables
 install(PROGRAMS
   scripts/social_map_generator.py
-  scripts/detectContextNode.py
   scripts/stage_joints.py
   scripts/odom_tf_publisher.py
   scripts/people_publisher.py

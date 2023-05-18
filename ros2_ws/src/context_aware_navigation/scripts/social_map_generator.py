@@ -17,6 +17,8 @@ from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge
 from context_aware_navigation.asymetricGausian import *
 
+import cv2
+
 
 class SocialMapGenerator(Node):
 
@@ -128,7 +130,7 @@ class SocialMapGenerator(Node):
 def main(args=sys.argv):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator(15, 15, 0.1, int(args[1]))
+    social_map_generator = SocialMapGenerator(15, 15, 0.05, int(args[1]))
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()
