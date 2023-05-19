@@ -72,3 +72,12 @@ topics:
       depth: 10
       durability: reliable
       durability: transient_local
+  # -
+  #   topic: /tf
+  #   type: tf2_msgs/msg/TFMessage
+  #   queue_size: 1
+  #   qos:
+  #     history: keep_last
+  #     depth: 10
+  #     durability: reliable
+  #     durability: transient_local
