@@ -93,13 +93,16 @@ class Detector(Node):
         # tf listener stuff so we can transform people into there
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        print("DONE INITIALIZING INTERACTION DETECTOR")
 
     def social_zone_callback(self, msg):
         try:
-            t = self.tf_buffer.lookup_transform(
-                "map",
-                msg.header.frame_id,
-                msg.header.stamp)
+            t = self.tf_buffer.lookup_transform_full(
+                target_frame="map",
+                target_time=rclpy.time.Time(),
+                source_frame=msg.header.frame_id,
+                source_time=msg.header.stamp,
+                fixed_frame="map")
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform base_link to map: {ex}')
@@ -142,8 +145,8 @@ class Detector(Node):
                 bb = BoundingBox()
                 bb.header.stamp = msg.header.stamp
                 bb.header.frame_id = "map"
-                bb.center_x = t.transform.translation.x + x
-                bb.center_y = t.transform.translation.y - y
+                bb.center_x = x +t.transform.translation.x 
+                bb.center_y = -y + t.transform.translation.y
                 bb.width = w
                 bb.height = h
 
