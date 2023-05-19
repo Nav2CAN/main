@@ -124,7 +124,6 @@ namespace context_aware_navigation
         min_j = std::max(0, min_j);
         max_i = std::min(static_cast<int>(size_x), max_i);
         max_j = std::min(static_cast<int>(size_y), max_j);
-        geometry_msgs::msg::TransformStamped t;
         geometry_msgs::msg::PoseStamped poseIn, poseOut;
         // center of costmap layer
         std::string global_frame_ = layered_costmap_->getGlobalFrameID();
@@ -134,38 +133,39 @@ namespace context_aware_navigation
             //only write ellipses that are not too old
             if(node->now().seconds()-BoundingBox->header.stamp.sec<keeptime){
                 //create stamped pose of the bounding box in the message frame (most likely map)
-                poseIn.header=BoundingBox->header;
-                poseIn.pose.position.x=BoundingBox->center_x;
-                poseIn.pose.position.y=BoundingBox->center_y;
-                poseIn.pose.position.z=0;
-                tf2::Quaternion q;
-                q.setRPY(0,0,0);//bounding boxes are never rotated
-                q=q.normalize();
-                poseIn.pose.orientation.x=q.x();
-                poseIn.pose.orientation.y=q.y();
-                poseIn.pose.orientation.z=q.z();
-                poseIn.pose.orientation.w=q.w();
-
+                // poseIn.header=BoundingBox->header;
+                // poseIn.pose.position.x=BoundingBox->center_x;
+                // poseIn.pose.position.y=BoundingBox->center_y;
+                // poseIn.pose.position.z=0;
+                // tf2::Quaternion q;
+                // q.setRPY(0,0,0);//bounding boxes are never rotated
+                // q=q.normalize();
+                // poseIn.pose.orientation.x=q.x();
+                // poseIn.pose.orientation.y=q.y();
+                // poseIn.pose.orientation.z=q.z();
+                // poseIn.pose.orientation.w=q.w();
+                geometry_msgs::msg::TransformStamped t;
                 //transform the pose from the message frame into the global frame of the costmap
                 try {
-                    tf_buffer->transform(poseIn,poseOut,global_frame_,tf2::durationFromSec(5.0));
+                    // tf_buffer->transform(poseIn,poseOut,global_frame_,tf2::durationFromSec(5.0));
+                    t = tf_buffer->lookupTransform(global_frame_,node->now(),BoundingBox->header.frame_id,BoundingBox->header.stamp,"map");
+
                 } catch (const tf2::TransformException & ex) {
                 RCLCPP_INFO(
                     node->get_logger(), "Could not transform %s to %s: %s",
                     global_frame_.c_str(), BoundingBox->header.frame_id.c_str(), ex.what());
                 return;
                 }
-                q = tf2::Quaternion(
-                        poseOut.pose.orientation.x,
-                        poseOut.pose.orientation.y,
-                        poseOut.pose.orientation.z,
-                        poseOut.pose.orientation.w);
+                q = tf2::Quaternion(t.transform.rotation.x,
+                        t.transform.rotation.y,
+                        t.transform.rotation.z,
+                        t.transform.rotation.w);
                 tf2::Matrix3x3 m(q);
                 double roll, pitch, yaw;
                 m.getRPY(roll, pitch, yaw);
 
                 //get coordinates of the center without bounding it so we can draw an ellipse outside of bounds of the cv::Mat
-                worldToMapNoBounds(poseOut.pose.position.x,poseOut.pose.position.y,x1,y1);
+                worldToMapNoBounds(BoundingBox->center_x+t.transform.translation.x,BoundingBox->center_y+t.transform.translation.y,x1,y1);
                 cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
 
                 //draw ellipse into cv::Mat

@@ -60,9 +60,9 @@ class SocialMapGenerator(Node):
 
         try:
             t = self.tf_buffer.lookup_transform(
-                "map",
+                msg.header.frame_id,
                 "base_link",
-                rclpy.time.Time())
+                msg.header.stamp)
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform base_link to map: {ex}')
@@ -79,32 +79,20 @@ class SocialMapGenerator(Node):
             personPose.pose.position.x = person.position.x
             personPose.pose.position.y = person.position.y
             personPose.pose.position.z = 0.0
-            quad = quaternion_about_axis(person.position.z, (0, 0, 1))
-            personPose.pose.orientation.x = quad[0]
-            personPose.pose.orientation.y = quad[1]
-            personPose.pose.orientation.z = quad[2]
-            personPose.pose.orientation.w = quad[3]
-            personOut = self.tf_buffer.transform(
-                personPose, "map", rclpy.time.Duration(seconds=5.0))
+
             # make the person position relative to the non rotating robot
 
-            X = int(np.floor((personOut.pose.position.x - t.transform.translation.x) /
+            X = int(np.floor((personPose.pose.position.x - t.transform.translation.x) /
                              self.density))  # [px]
             Y = -int(
-                np.floor((personOut.pose.position.y - t.transform.translation.y) / self.density))
+                np.floor((personPose.pose.position.y - t.transform.translation.y) / self.density))
             if abs(X) < self.center[0] or abs(Y) < self.center[1]:
                 # transform relative to the top left corner of the map
                 X = int(np.floor((X + self.center[0])))
                 Y = int(np.floor((Y + self.center[1])))
 
-                quad = [
-                    personOut.pose.orientation.x,
-                    personOut.pose.orientation.y,
-                    personOut.pose.orientation.z,
-                    personOut.pose.orientation.w,
-                ]
                 social_zone = rotate(
-                    self.socialZones[0], np.rad2deg(euler_from_quaternion(quad)[2]), reshape=True)
+                    self.socialZones[0], np.rad2deg(person.position.z), reshape=True)
 
                 (width, height) = np.shape(social_zone)
                 width = int(np.floor(width/2))
