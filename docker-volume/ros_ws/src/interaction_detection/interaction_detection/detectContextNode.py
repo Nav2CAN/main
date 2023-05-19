@@ -93,6 +93,7 @@ class Detector(Node):
         # tf listener stuff so we can transform people into there
         self.tf_buffer = Buffer()
         self.tf_listener = TransformListener(self.tf_buffer, self)
+        print("DONE INITIALIZING INTERACTION DETECTOR")
 
     def social_zone_callback(self, msg):
         try:
