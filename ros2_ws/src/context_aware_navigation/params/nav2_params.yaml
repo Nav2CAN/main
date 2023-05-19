@@ -141,9 +141,9 @@ controller_server:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
       min_vel_x: -0.4
-      min_vel_y: -0.4
+      min_vel_y: -0.1
       max_vel_x: 0.7
-      max_vel_y: 0.7
+      max_vel_y: 0.1
       max_vel_theta: 1.2
       min_speed_xy: -0.4
       max_speed_xy: 0.7
@@ -157,7 +157,7 @@ controller_server:
       decel_lim_y: -0.3
       decel_lim_theta: -0.4
       vx_samples: 10
-      vy_samples: 10
+      vy_samples: 5
       vtheta_samples: 10
       sim_time: 1.7
       linear_granularity: 0.05
@@ -189,7 +189,7 @@ local_costmap:
       rolling_window: true
       width: 15
       height: 15
-      resolution: 0.1
+      resolution: 0.05
       robot_radius: 0.48
       # footprint: “[[0.334, 0.334], [0.334, -0.334], [-0.334, -0.334], [-0.334, 0.334]]”
       plugins: ["social_layer","voxel_layer",  "inflation_layer"]
@@ -200,7 +200,7 @@ local_costmap:
         plugin: "context_aware_navigation::InteractionLayer"
         enabled: True
         interaction_cost: 253
-        keeptime: 5.0
+        keeptime: 10.0
       inflation_layer:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
@@ -345,8 +345,8 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: False
     feedback: "OPEN_LOOP"
-    max_velocity: [0.7, 0.7, 1.2]
-    min_velocity: [-0.7, -0.7, -1.2]
+    max_velocity: [0.7, 0.1, 1.2]
+    min_velocity: [-0.4, -0.1, -1.2]
     max_accel: [0.3,0.3,0.4]
     max_decel: [-0.3,-0.3,-0.4]
     odom_topic: "odom"
