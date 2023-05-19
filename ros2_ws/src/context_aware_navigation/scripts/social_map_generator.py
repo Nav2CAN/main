@@ -16,6 +16,9 @@ from sensor_msgs.msg import Image
 from geometry_msgs.msg import PoseStamped
 from cv_bridge import CvBridge
 from context_aware_navigation.asymetricGausian import *
+from std_msgs.msg import Header
+
+import cv2
 
 
 class SocialMapGenerator(Node):
@@ -121,14 +124,17 @@ class SocialMapGenerator(Node):
                 social_zone = social_zone[sminy:smaxy, sminx:smaxx]
                 self.socialMap[miny:maxy, minx:maxx] = np.maximum(
                     roi, social_zone)
+        social_mapHeader = Header()
+        social_mapHeader.frame_id = "base_link"
+        social_mapHeader.stamp = msg.header.stamp
         self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
-            self.socialMap, encoding="passthrough", header=msg.header))
+            self.socialMap, encoding="passthrough", header=social_mapHeader))
 
 
 def main(args=sys.argv):
     rclpy.init(args=args)
 
-    social_map_generator = SocialMapGenerator(15, 15, 0.1, int(args[1]))
+    social_map_generator = SocialMapGenerator(15, 15, 0.05, int(args[1]))
     rclpy.spin(social_map_generator)
     social_map_generator.destroy_node()
     rclpy.shutdown()

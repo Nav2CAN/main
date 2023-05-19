@@ -43,7 +43,7 @@ class Detector(Node):
                  img_size=320, map_size=15,
                  trace=True, augment=False, conf_thres=0.25, iou_thres=0.45,
                  classes=None, agnostic_nms=False, device=''):
-        
+
         super().__init__('context_aware_detector')
         self.weights, self.imgsz, self.trace = weights, img_size, trace
         self.augment, self.conf_thres, self.iou_thres = augment, conf_thres, iou_thres
@@ -99,8 +99,8 @@ class Detector(Node):
         try:
             t = self.tf_buffer.lookup_transform(
                 "map",
-                "base_link",
-                rclpy.time.Time())
+                msg.header.frame_id,
+                msg.header.stamp)
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform base_link to map: {ex}')
@@ -123,10 +123,10 @@ class Detector(Node):
             img = np.ascontiguousarray(img)
 
             class_ID, x, y, w, h, confi = self.detect(im0s, img)
-            x=float(x)
-            y=float(y)
-            w=float(w)
-            h=float(h)
+            x = float(x)
+            y = float(y)
+            w = float(w)
+            h = float(h)
             if class_ID != None:
 
                 # put center value in middle of map and convert to meters
@@ -141,7 +141,8 @@ class Detector(Node):
                 # orientation does not matter since the two maps are x,y-colinear
 
                 bb = BoundingBox()
-                bb.header = msg.header
+                bb.header.stamp = msg.header.stamp
+                bb.header.frame_id = "map"
                 bb.center_x = t.transform.translation.x + x
                 bb.center_y = t.transform.translation.y - y
                 bb.width = w
