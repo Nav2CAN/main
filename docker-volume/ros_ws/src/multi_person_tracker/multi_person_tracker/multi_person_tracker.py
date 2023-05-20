@@ -354,7 +354,7 @@ def main(args=None):
     rclpy.init(args=args)
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(publishKeypoints=False,
-                                              dt=0.02, target_frame="camera_link", debug=False)
+                                              dt=0.02, target_frame="map", debug=False)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
