@@ -143,7 +143,7 @@ class Detector(Node):
                 # orientation does not matter since the two maps are x,y-colinear
 
                 bb = BoundingBox()
-                bb.header.stamp = msg.header.stamp
+                bb.header.stamp = rclpy.time.Time()
                 bb.header.frame_id = "map"
                 bb.center_x = x +t.transform.translation.x 
                 bb.center_y = -y + t.transform.translation.y
