@@ -52,7 +52,7 @@ private:
   float keeptime;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
-  rclcpp::Subscription<multi_person_tracker_interfaces::msg::BoundingBox>::ConstSharedPtr interaction_sub_;
+  rclcpp::Subscription<multi_person_tracker_interfaces::msg::BoundingBoxes>::ConstSharedPtr interaction_sub_;
   multi_person_tracker_interfaces::msg::BoundingBoxes::ConstSharedPtr BoundingBoxes;
 };
 

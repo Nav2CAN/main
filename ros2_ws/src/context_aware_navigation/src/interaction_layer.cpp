@@ -33,7 +33,7 @@ namespace context_aware_navigation
 
         tf_buffer = std::make_unique<tf2_ros::Buffer>(node->get_clock());
         tf_listener = std::make_shared<tf2_ros::TransformListener>(*tf_buffer);
-        interaction_sub_ = node->create_subscription<multi_person_tracker_interfaces::msg::BoundingBox>(
+        interaction_sub_ = node->create_subscription<multi_person_tracker_interfaces::msg::BoundingBoxes>(
         "/interaction_bb", 10, std::bind(&InteractionLayer::interactionCallback, this, std::placeholders::_1));
         current_ = true;
     }
@@ -137,7 +137,7 @@ namespace context_aware_navigation
                 // poseIn.pose.position.x=BoundingBox->center_x;
                 // poseIn.pose.position.y=BoundingBox->center_y;
                 // poseIn.pose.position.z=0;
-                // tf2::Quaternion q;
+                tf2::Quaternion q;
                 // q.setRPY(0,0,0);//bounding boxes are never rotated
                 // q=q.normalize();
                 // poseIn.pose.orientation.x=q.x();
@@ -164,12 +164,12 @@ namespace context_aware_navigation
                 double roll, pitch, yaw;
                 m.getRPY(roll, pitch, yaw);
                 cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
-                for (int i=0;i<sizeof(BoundingBoxes->boundingBoxes);i++){
+                for (int i=0;i<static_cast<int>(BoundingBoxes->boundingboxes.size());i++){
                 //get coordinates of the center without bounding it so we can draw an ellipse outside of bounds of the cv::Mat
-                    worldToMapNoBounds(BoundingBoxes->boundingBoxes[i].center_x+t.transform.translation.x,BoundingBoxes->boundingBoxes[i].center_y+t.transform.translation.y,x1,y1);
+                    worldToMapNoBounds(BoundingBoxes->boundingboxes[i].center_x+t.transform.translation.x,BoundingBoxes->boundingboxes[i].center_y+t.transform.translation.y,x1,y1);
                     //draw ellipse into cv::Mat
                     cv::Point center = cv::Point(x1,y1);
-                    cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBoxes->boundingBoxes[i].width/(2*resolution_))),static_cast <int> (std::floor(BoundingBoxes->boundingBoxes[i].height/(2*resolution_))));
+                    cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBoxes->boundingboxes[i].width/(2*resolution_))),static_cast <int> (std::floor(BoundingBoxes->boundingboxes[i].height/(2*resolution_))));
                     cv::ellipse(cv_costmap,center,size,yaw*(180/M_PI),0,360,interaction_cost,-1);//draw interaction as ellipseat the correct angle
                 }
                 //write the array to the costmap
