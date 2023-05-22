@@ -88,13 +88,13 @@ namespace context_aware_navigation
             }
     void
     InteractionLayer::interactionCallback(
-      multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message)
+      multi_person_tracker_interfaces::msg::BoundingBoxes::ConstSharedPtr message)
     {
         auto node = node_.lock();
         if (!node) {
             throw std::runtime_error{"Failed to lock node"};
         }
-        BoundingBox=message;
+        BoundingBoxes=message;
     }
 
     // The method is called when costmap recalculation is required.
@@ -128,10 +128,10 @@ namespace context_aware_navigation
         // center of costmap layer
         std::string global_frame_ = layered_costmap_->getGlobalFrameID();
         int x1,y1;
-        if (BoundingBox != nullptr)
+        if (BoundingBoxes != nullptr)
         {
             //only write ellipses that are not too old
-            if(node->now().seconds()-BoundingBox->header.stamp.sec<keeptime){
+            if(node->now().seconds()-BoundingBoxes->header.stamp.sec<keeptime){
                 //create stamped pose of the bounding box in the message frame (most likely map)
                 // poseIn.header=BoundingBox->header;
                 // poseIn.pose.position.x=BoundingBox->center_x;
@@ -148,12 +148,12 @@ namespace context_aware_navigation
                 //transform the pose from the message frame into the global frame of the costmap
                 try {
                     // tf_buffer->transform(poseIn,poseOut,global_frame_,tf2::durationFromSec(5.0));
-                    t = tf_buffer->lookupTransform(global_frame_,node->now(),BoundingBox->header.frame_id,BoundingBox->header.stamp,"map");
+                    t = tf_buffer->lookupTransform(global_frame_,node->now(),BoundingBoxes->header.frame_id,BoundingBoxes->header.stamp,"map");
 
                 } catch (const tf2::TransformException & ex) {
                 RCLCPP_INFO(
                     node->get_logger(), "Could not transform %s to %s: %s",
-                    global_frame_.c_str(), BoundingBox->header.frame_id.c_str(), ex.what());
+                    global_frame_.c_str(), BoundingBoxes->header.frame_id.c_str(), ex.what());
                 return;
                 }
                 q = tf2::Quaternion(t.transform.rotation.x,
@@ -163,16 +163,15 @@ namespace context_aware_navigation
                 tf2::Matrix3x3 m(q);
                 double roll, pitch, yaw;
                 m.getRPY(roll, pitch, yaw);
-
-                //get coordinates of the center without bounding it so we can draw an ellipse outside of bounds of the cv::Mat
-                worldToMapNoBounds(BoundingBox->center_x+t.transform.translation.x,BoundingBox->center_y+t.transform.translation.y,x1,y1);
                 cv::Mat cv_costmap = cv::Mat(size_y,size_x,CV_8UC1, costmap_array);//make a cv::Mat from the current costmap
-
-                //draw ellipse into cv::Mat
-                cv::Point center = cv::Point(x1,y1);
-                cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBox->width/(2*resolution_))),static_cast <int> (std::floor(BoundingBox->height/(2*resolution_))));
-                cv::ellipse(cv_costmap,center,size,yaw*(180/M_PI),0,360,interaction_cost,-1);//draw interaction as ellipseat the correct angle
-
+                for (int i=0;i<sizeof(BoundingBoxes->boundingBoxes);i++){
+                //get coordinates of the center without bounding it so we can draw an ellipse outside of bounds of the cv::Mat
+                    worldToMapNoBounds(BoundingBoxes->boundingBoxes[i].center_x+t.transform.translation.x,BoundingBoxes->boundingBoxes[i].center_y+t.transform.translation.y,x1,y1);
+                    //draw ellipse into cv::Mat
+                    cv::Point center = cv::Point(x1,y1);
+                    cv::Size size = cv::Size(static_cast <int> (std::floor(BoundingBoxes->boundingBoxes[i].width/(2*resolution_))),static_cast <int> (std::floor(BoundingBoxes->boundingBoxes[i].height/(2*resolution_))));
+                    cv::ellipse(cv_costmap,center,size,yaw*(180/M_PI),0,360,interaction_cost,-1);//draw interaction as ellipseat the correct angle
+                }
                 //write the array to the costmap
                 costmap_array=cv_costmap.data;
                 updateWithMax(master_grid, min_i, min_j, max_i, max_j); //update with max
