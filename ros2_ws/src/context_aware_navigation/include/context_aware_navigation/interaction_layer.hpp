@@ -14,7 +14,7 @@
 #include "cv_bridge/cv_bridge.h"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-#include "multi_person_tracker_interfaces/msg/bounding_box.hpp"
+#include "multi_person_tracker_interfaces/msg/bounding_boxes.hpp"
 namespace context_aware_navigation
 {
 
@@ -39,7 +39,7 @@ public:
   bool isClearable() override {return false;}
 
   void interactionCallback(
-      multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr message);
+      multi_person_tracker_interfaces::msg::BoundingBoxes::ConstSharedPtr message);
 
 
 
@@ -53,7 +53,7 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
   rclcpp::Subscription<multi_person_tracker_interfaces::msg::BoundingBox>::ConstSharedPtr interaction_sub_;
-  multi_person_tracker_interfaces::msg::BoundingBox::ConstSharedPtr BoundingBox;
+  multi_person_tracker_interfaces::msg::BoundingBoxes::ConstSharedPtr BoundingBoxes;
 };
 
 }  // namespace context_aware_navigation
