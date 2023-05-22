@@ -16,7 +16,7 @@ from rclpy.node import Node
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
 from std_msgs.msg import String
-from multi_person_tracker_interfaces.msg import BoundingBox
+from multi_person_tracker_interfaces.msg import BoundingBoxes, BoundingBox
 from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -81,7 +81,7 @@ class Detector(Node):
 
         # ROS2 subscriber and publisher setup
         self.interaction_publisher = self.create_publisher(
-            BoundingBox, '/interaction_bb', 10)
+            BoundingBoxes, '/interaction_bb', 10)
 
         self.bridge = CvBridge()
         self.subscription = self.create_subscription(
@@ -124,33 +124,37 @@ class Detector(Node):
             img = img[:, :, ::-1].transpose(2, 0, 1)
             img = np.ascontiguousarray(img)
 
-            class_ID, x, y, w, h, confi = self.detect(im0s, img)
-            x = float(x)
-            y = float(y)
-            w = float(w)
-            h = float(h)
-            if class_ID != None:
+            detections = self.detect(im0s, img) # class_ID, x, y, w, h, confi
+            
+            boundingBoxes = BoundingBoxes()
+            boundingBoxes.header.stamp = rclpy.time.Time()
+            boundingBoxes.header.frame_id = "map"
+            for detection in detections:
+                
+                x = float(detection[1])
+                y = float(detection[2])
+                w = float(detection[3])
+                h = float(detection[4])
+                if detection[0] != None:
 
-                # put center value in middle of map and convert to meters
-                x = (x - 0.5) * self.map_size
-                # put center value in middle of map and convert to meters
-                y = (y - 0.5) * self.map_size
+                    # put center value in middle of map and convert to meters
+                    x = (x - 0.5) * self.map_size
+                    # put center value in middle of map and convert to meters
+                    y = (y - 0.5) * self.map_size
 
-                w = w * self.map_size  # transform to meters
-                h = h * self.map_size  # transform to meters
+                    w = w * self.map_size  # transform to meters
+                    h = h * self.map_size  # transform to meters
 
-                # transform center coordinates into /map frame
-                # orientation does not matter since the two maps are x,y-colinear
+                    # transform center coordinates into /map frame
+                    # orientation does not matter since the two maps are x,y-colinear
 
-                bb = BoundingBox()
-                bb.header.stamp = rclpy.time.Time()
-                bb.header.frame_id = "map"
-                bb.center_x = x +t.transform.translation.x 
-                bb.center_y = -y + t.transform.translation.y
-                bb.width = w
-                bb.height = h
-
-                self.interaction_publisher.publish(bb)
+                    bb = BoundingBox()
+                    bb.center_x = x +t.transform.translation.x 
+                    bb.center_y = -y + t.transform.translation.y
+                    bb.width = w
+                    bb.height = h
+                    boundingBoxes.boundingBoxes.append(bb)
+            self.interaction_publisher.publish(boundingBoxes)
 
         except Exception as e:
             print(f"Exception on social_zone_callback")
@@ -200,7 +204,8 @@ class Detector(Node):
                     n = (det[:, -1] == c).sum()  # detections per class
                     # add to string
                     s += f"{n} {self.names[int(c)]}{'s' * (n > 1)}, "
-
+                
+                detections= []
                 # Write results
                 for *xyxy, conf, cls in reversed(det):
                     xywh = (xyxy2xywh(torch.tensor(xyxy).view(1, 4)) /
@@ -214,12 +219,13 @@ class Detector(Node):
                     w = output[3]
                     h = output[4]
                     confi = output[5]
+                    detections.append(output)
 
                     # print(f"Class = {class_ID}, x = {x}, y = {y}, width = {w}, height = {h}, conf = {confi}") # Remove after ROS implementation
 
             # Print time (inference + NMS)
                 # print(f'{s}Done. ({(1E3 * (t2 - t1)):.1f}ms) Inference, ({(1E3 * (t3 - t2)):.1f}ms) NMS')
-                return class_ID, x, y, w, h, confi
+                return detections #class_ID, x, y, w, h, confi
             # TODO handle output when no detection
             return None, None, None, None, None, None
 
