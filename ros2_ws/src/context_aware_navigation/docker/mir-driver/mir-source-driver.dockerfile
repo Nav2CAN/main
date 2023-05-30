@@ -7,13 +7,6 @@ RUN apt-get update \
 RUN apt-get update -qq \
     && apt-get install -y -qq --no-install-recommends git python3-pip ruby shellcheck clang-format-10 python3-catkin-lint \
     && rm -rf /var/lib/apt/lists/*
-# RUN pip3 install pre-commit
-# RUN mkdir -p /tmp/pre-commit
-# COPY .pre-commit-config.yaml /tmp/pre-commit/
-# RUN cd /tmp/pre-commit \
-#     && git init \
-#     && pre-commit install-hooks \
-#     && rm -rf /tmp/pre-commit
 
 # Create ROS workspace
 RUN mkdir -p /ws/src && cd /ws/src && git clone https://github.com/DFKI-NI/mir_robot.git

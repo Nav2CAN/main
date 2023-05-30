@@ -1,7 +1,5 @@
 version: '3'
-
 services:
-
   mir-source-driver:
     build:
       context: ./mir-driver
@@ -11,9 +9,8 @@ services:
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
     volumes:
-      # - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/launch/mir_launch.py:/ws/src/mir_robot/mir_driver/launch/mir_launch.py
       - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/scripts/mir_bridge.py:/ws/install/mir_driver/mir_bridge.py
-    command: bash -c "source /ws/devel/setup.bash && roslaunch mir_driver mir.launch" #tail -f /dev/null" #rm -rf /build /install /devel && catkin build && source devel/setup.bash && 
+    command: "roslaunch mir_driver mir.launch"
     network_mode: "host"
   ros1_bridge:
     # image: ros:foxy-ros1-bridge
@@ -25,14 +22,9 @@ services:
       - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/cyclonedds_foxy.xml:/cyclonedds.xml
     environment:
       - "ROS_MASTER_URI=http://localhost:11311"
+      - "CYCLONEDDS_URI=/cyclonedds.xml"
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
-      - "CYCLONEDDS_URI=/cyclonedds.xml"
     command: "ros2 run ros1_bridge dynamic_bridge"
     network_mode: "host"
-  # visualizer:
-  #   build:
-  #     context: ./visualizer
-  #     dockerfile: visualizer.dockerfile
-    # ports:
-    #   - "80:80"
+
