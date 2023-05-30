@@ -1,0 +1,7 @@
+FROM universalrobots/ursim_e-series
+
+# Install the URCap
+ENV URCAP_VERSION="1.0.5"
+RUN mkdir -p "/urcaps"
+RUN curl -L -o "/urcaps/externalcontrol-${URCAP_VERSION}.jar" \
+    "https://github.com/UniversalRobots/Universal_Robots_ExternalControl_URCap/releases/download/v${URCAP_VERSION}/externalcontrol-${URCAP_VERSION}.jar"
