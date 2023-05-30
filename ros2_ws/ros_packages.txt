@@ -1,9 +1,19 @@
+sudo apt install git
+mkdir ~/repositories
+cd ~/repositories
+git clone https://github.com/Tristan9497/master-thesis.git # or git@github.com:Tristan9497/master-thesis.git
+cd master-thesis
+git submodule update --init
+
+
 sudo apt install ros-humble-desktop
 sudo apt install ros-dev-tools
 sudo apt install ros-humble-rmw-cyclonedds-cpp
 echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
 echo "echo "export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp" >> ~/.bashrc
 echo "export ROS_DOMAIN_ID=0" >> ~/.bashrc
+echo "export CYCLONEDDS_URI=~/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/cyclonedds_humble.xml" >> ~/.bashrc
+
 sudo apt-get install ros-humble-nav2*
 sudo apt-get install ros-humble-tf-transformations
 sudo apt-get install python3-pip
