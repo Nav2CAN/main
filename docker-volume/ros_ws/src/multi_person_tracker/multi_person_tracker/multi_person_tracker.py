@@ -20,7 +20,7 @@ from geometry_msgs.msg import Pose, PointStamped
 from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
 from .tracking import PeopleTracker, Detection
-
+from rclpy.qos import QoSProfile, HistoryPolicy, DurabilityPolicy, ReliabilityPolicy
 import csv
 
 def append_to_csv(filename, value):
@@ -30,7 +30,7 @@ def append_to_csv(filename, value):
 
 
 class MultiPersonTracker(Node):
-    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=1, target_frame: str = "map", debug: bool = False):
+    def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=5, target_frame: str = "map", debug: bool = False):
         '''
         Class for pose estimation of a person using Nvidia jetson Orin implementation
         of PoseNet and passing messages using ROS2.
@@ -199,12 +199,16 @@ class MultiPersonTracker(Node):
             self.debug = self.tracker.debug
             if self.debug:
                 print("init camera")
-
+            self.qos_profile = QoSProfile(
+                durability=DurabilityPolicy.VOLATILE,
+                history=HistoryPolicy.KEEP_LAST,
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                depth=5)
             self.namespace = namespace
             self.tfFrame = self.namespace+"_color_frame"#TODO check if this is supposed to be "aligned_depth_to_color_frame"
-            self.tf_buffer = tf2_ros.Buffer()
+            self.tf_buffer = tf2_ros.Buffer(cache_time=rclpy.time.Duration(seconds=5.0))
             self.tf_listener = tf2_ros.TransformListener(
-                self.tf_buffer, self.tracker)
+                self.tf_buffer, self.tracker, spin_thread = True)
 
             # Initialize subscribers in tracker object for this camera
             self.rgb_subscription = self.tracker.create_subscription(
@@ -252,10 +256,11 @@ class MultiPersonTracker(Node):
                     detections = []
                     trans = None
                     try:
+                        # self.tf_buffer.waitForTransform(self.tfFrame,self.tracker.target_frame, self.tracker.get_clock().now(), rclpy.time.Duration(seconds=5.0))
                         trans = self.tf_buffer.lookup_transform(
-                            self.tracker.target_frame, self.tfFrame, self.tracker.get_clock().now())
-                    except:
-                        None
+                            self.tracker.target_frame, self.tfFrame, self.tracker.get_clock().now(),timeout=rclpy.time.Duration(seconds=0.5))
+                    except Exception as e:
+                        print(e)
                     if trans:
                         pose = Pose()
                         for person in kpPersons:
@@ -364,7 +369,7 @@ def main(args=None):
     rclpy.init(args=args)
   # Start ROS2 node
     multi_person_tracker = MultiPersonTracker(publishKeypoints=False,
-                                              dt=0.02, target_frame="map", debug=False)
+                                              dt=0.02, target_frame="camera_link", debug=False)
     rclpy.spin(multi_person_tracker)
     multi_person_tracker.destroy_node()
     rclpy.shutdown()
