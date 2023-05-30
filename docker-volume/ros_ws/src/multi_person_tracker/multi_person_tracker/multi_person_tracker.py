@@ -21,6 +21,13 @@ from .person_keypoints import *
 from multi_person_tracker_interfaces.msg import People, Person
 from .tracking import PeopleTracker, Detection
 
+import csv
+
+def append_to_csv(filename, value):
+    with open(filename, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([value])
+
 
 class MultiPersonTracker(Node):
     def __init__(self, publishPoseMsg: bool = True, publishKeypoints: bool = False, dt=0.1, n_cameras=2, newTrack=3, keeptime=1, target_frame: str = "map", debug: bool = False):
@@ -214,6 +221,7 @@ class MultiPersonTracker(Node):
 
         def rgb_callback(self, msg):
             try:
+                start_time = self.tracker.get_clock().now().nanoseconds # save time for timing of node
                 # conversions
                 self.rgb = self.bridge.imgmsg_to_cv2(
                     msg, desired_encoding='passthrough')
@@ -305,6 +313,8 @@ class MultiPersonTracker(Node):
                                 self.tracker.peopleCount += len(
                                     kpPersons)
                                 self.tracker.saveImage(self.cudaimage)
+                timing = start_time - self.tracker.get_clock().now().nanoseconds
+                append_to_csv("multiPersonTrackerTiming.csv", timing)
             except Exception as e:
                 if self.debug:
                     print(f"Exception on rgb_callback")
