@@ -1,7 +1,6 @@
 # This is an auto generated Dockerfile for ros:ros1-bridge
 # generated from docker_images_ros2/ros1_bridge/create_ros_ros1_bridge_image.Dockerfile.em
 FROM ros:foxy-ros-base-focal
-
 # setup sources.list
 RUN echo "deb http://packages.ros.org/ros/ubuntu focal main" > /etc/apt/sources.list.d/ros1-latest.list
 
@@ -26,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-foxy-rmw-cyclonedds-cpp \
     && rm -rf /var/lib/apt/lists/*
 
+ENV RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+ENV ROS_DOMAIN_ID=0
+
 # setup entrypoint
-RUN chmod +x ./ros_entrypoint.sh /
 COPY ./ros_entrypoint.sh /

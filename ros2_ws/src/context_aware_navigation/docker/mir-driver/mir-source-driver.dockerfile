@@ -1,5 +1,4 @@
 FROM ros:noetic-ros-core
-
 RUN apt-get update \
     && apt-get install -y --no-install-recommends build-essential python3-rosdep python3-catkin-lint python3-catkin-tools \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -35,3 +34,5 @@ RUN /bin/bash -c "source /opt/ros/noetic/setup.bash && \
     catkin build --limit-status-rate 0.1 --no-notify && \
     catkin build --limit-status-rate 0.1 --no-notify --make-args tests"
 
+# setup entrypoint
+COPY ./ros_entrypoint.sh /
