@@ -21,6 +21,12 @@ from tf2_ros import TransformException
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
 
+import csv
+
+def append_to_csv(filename, value):
+    with open(filename, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([value])
 
 class Detector(Node):
     '''
@@ -96,6 +102,8 @@ class Detector(Node):
         print("DONE INITIALIZING INTERACTION DETECTOR")
 
     def social_zone_callback(self, msg):
+        start_time = self.tracker.get_clock().now().nanoseconds # save time for timing of node
+
         try:
             t = self.tf_buffer.lookup_transform_full(
                 target_frame="map",
@@ -155,6 +163,8 @@ class Detector(Node):
                     bb.height = h
                     boundingBoxes.boundingboxes.append(bb)
             self.interaction_publisher.publish(boundingBoxes)
+            timing = start_time - self.tracker.get_clock().now().nanoseconds # save time for timing of node
+            append_to_csv("interactionDetectorTiming.csv", timing)
 
         except Exception as e:
             print(f"Exception on social_zone_callback")

@@ -1,0 +1,39 @@
+topics:
+  -
+    topic: /cmd_vel  # Topic name on both ROS 1 and ROS 2
+    type: geometry_msgs/msg/Twist  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /b_scan_rep117  # Topic name on both ROS 1 and ROS 2
+    type: sensor_msgs/msg/LaserScan  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /f_scan_rep117  # Topic name on both ROS 1 and ROS 2
+    type: sensor_msgs/msg/LaserScan  # Type of topic to bridge
+    queue_size: 1 
+  -
+    topic: /clock  # Topic name on both ROS 1 and ROS 2
+    type: rosgraph_msgs/msg/Clock  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /odom  # Topic name on both ROS 1 and ROS 2
+    type: nav_msgs/msg/Odometry  # Type of topic to bridge
+    queue_size: 1
+  -
+    topic: /tf
+    type: tf2_msgs/msg/TFMessage
+    queue_size: 1
+  -
+    topic: /tf_static
+    type: tf2_msgs/msg/TFMessage
+    queue_size: 1
+    qos:
+      history: keep_all
+      durability: transient_local
+  -
+    topic: /map
+    type: nav_msgs/msg/OccupancyGrid
+    queue_size: 1
+    qos:
+      history: keep_all
+      durability: transient_local

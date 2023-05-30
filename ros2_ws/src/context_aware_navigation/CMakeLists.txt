@@ -64,6 +64,7 @@ install(PROGRAMS
   scripts/people_publisher.py
   scripts/measureTraveledDistance.py
   scripts/distToPeople.py
+  scripts/mapRepublisher.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

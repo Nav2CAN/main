@@ -1,10 +1,10 @@
 amcl:
   ros__parameters:
-    alpha1: 0.005 #0.2
-    alpha2: 0.005 #0.2
-    alpha3: 0.005 #0.2
-    alpha4: 0.005 #0.2
-    alpha5: 0.005 #0.2
+    alpha1: 0.2
+    alpha2: 0.1
+    alpha3: 0.1
+    alpha4: 0.2
+    alpha5: 0.2
     base_frame_id: "base_footprint"
     beam_skip_distance: 0.5
     beam_skip_error_threshold: 0.9
@@ -13,30 +13,37 @@ amcl:
     global_frame_id: "map"
     lambda_short: 0.1
     laser_likelihood_max_dist: 2.0
-    laser_max_range: 7.0
+    laser_max_range: -1
     laser_min_range: -1.0
     laser_model_type: "likelihood_field"
-    max_beams: 30
+    max_beams: 50
     max_particles: 5000
     min_particles: 500
     odom_frame_id: "odom"
-    pf_err: 0.01 #0.05
+    pf_err: 0.05
     pf_z: 0.99
     recovery_alpha_fast: 0.0
     recovery_alpha_slow: 0.0
     resample_interval: 1
-    robot_model_type: "nav2_amcl::OmniMotionModel"
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
     save_pose_rate: 0.5
     sigma_hit: 0.2
     tf_broadcast: true
-    transform_tolerance: 1.0
-    update_min_a: 0.5
+    transform_tolerance: 0.2
+    update_min_a: 0.2
     update_min_d: 0.2
     z_hit: 0.5
     z_max: 0.05
     z_rand: 0.5
     z_short: 0.05
-    scan_topic: /base_scan
+    scan_topic: scan
+
+map_saver:
+  ros__parameters:
+    save_map_timeout: 5.0
+    free_thresh_default: 0.25
+    occupied_thresh_default: 0.65
+    map_subscribe_transient_local: True
 
 bt_navigator:
   ros__parameters:
@@ -136,125 +143,63 @@ controller_server:
       plugin: "nav2_controller::SimpleGoalChecker"
       xy_goal_tolerance: 0.25
       yaw_goal_tolerance: 0.25
-    # DWB parameters
-    # controller_frequency: 30.0
-    # FollowPath:
-    #   plugin: "nav2_mppi_controller::MPPIController"
-    #   time_steps: 56
-    #   model_dt: 0.05
-    #   batch_size: 2000
-    #   vx_std: 0.2
-    #   vy_std: 0.2
-    #   wz_std: 0.4
-    #   vx_max: 0.5
-    #   vx_min: -0.35
-    #   vy_max: 0.5
-    #   wz_max: 1.9
-    #   iteration_count: 1
-    #   prune_distance: 1.7
-    #   transform_tolerance: 0.1
-    #   temperature: 0.3
-    #   gamma: 0.015
-    #   motion_model: "DiffDrive"
-    #   visualize: false
-    #   reset_period: 1.0 # (only in Humble)
-    #   TrajectoryVisualizer:
-    #     trajectory_step: 5
-    #     time_step: 3
-    #   AckermannConstrains:
-    #     min_turning_r: 0.2
-    #   critics: ["ConstraintCritic", "ObstaclesCritic", "GoalCritic", "GoalAngleCritic", "PathAlignCritic", "PathFollowCritic", "PathAngleCritic", "PreferForwardCritic"]
-    #   ConstraintCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 4.0
-    #   GoalCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 5.0
-    #     threshold_to_consider: 1.0
-    #   GoalAngleCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 3.0
-    #     threshold_to_consider: 0.4
-    #   PreferForwardCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 5.0
-    #     threshold_to_consider: 0.4
-    #   ObstaclesCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     repulsion_weight: 1.5
-    #     critical_weight: 20.0
-    #     consider_footprint: false
-    #     collision_cost: 10000.0
-    #     collision_margin_distance: 0.1
-    #     near_goal_distance: 0.5
-    #     inflation_radius: 0.55 # (only in Humble)
-    #     cost_scaling_factor: 10.0 # (only in Humble)
-    #   PathAlignCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 14.0
-    #     max_path_occupancy_ratio: 0.05
-    #     trajectory_point_step: 3
-    #     threshold_to_consider: 0.40
-    #     offset_from_furthest: 20
-    #   PathFollowCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 5.0
-    #     offset_from_furthest: 5
-    #     threshold_to_consider: 0.6
-    #   PathAngleCritic:
-    #     enabled: true
-    #     cost_power: 1
-    #     cost_weight: 2.0
-    #     offset_from_furthest: 4
-    #     threshold_to_consider: 0.40
-    #     max_angle_to_furthest: 1.0
+    #DWB parameters
     FollowPath:
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
-      min_vel_x: -0.1
-      min_vel_y: 0.0
-      max_vel_x: 0.7
-      max_vel_y: 0.0
-      max_vel_theta: 1.2
-      min_speed_xy: -0.1
-      max_speed_xy: 0.7
-      min_speed_theta: 0.02
-      # Add high threshold velocity for turtlebot 3 issue.
-      # https://github.com/ROBOTIS-GIT/turtlebot3_simulations/issues/75
-      acc_lim_x: 0.3
-      acc_lim_y: 0.0
-      acc_lim_theta: 0.4
-      decel_lim_x: -0.3
-      decel_lim_y: 0.0
-      decel_lim_theta: -0.4
-      vx_samples: 10
-      vy_samples: 0
-      vtheta_samples: 20
-      sim_time: 2.5
+  # Robot configuration
+      max_vel_x:  0.8
+      min_vel_x: -0.2
+
+      max_vel_y: 0.0  # diff drive robot
+      min_vel_y: 0.0  # diff drive robot
+
+      max_speed_xy: 0.8    # max_trans_vel: 0.8  # choose slightly less than the base's capability
+      min_speed_xy: 0.1    # min_trans_vel: 0.1  # this is the min trans velocity when there is negligible rotational velocity
+
+      max_vel_theta: 1.0    # max_rot_vel: 1.0  # choose slightly less than the base's capability
+      min_speed_theta: 0.1  # min_rot_vel: 0.1 default: 0.4  # this is the min angular velocity when there is negligible translational velocity
+
+      acc_lim_x: 0.8
+      acc_lim_y: 0.0      # diff drive robot
+      acc_lim_theta: 1.5
+      decel_lim_x: -1.5
+      decel_lim_y: -0.0
+      decel_lim_theta: -1.5
+
+      # Goal tolerance
+      yaw_goal_tolerance: 0.03  # yaw_goal_tolerance > (sim_time * min_rot_vel) / 2 (from Navigation Tuning Guide)
+      xy_goal_tolerance: 0.08   # xy_goal_tolerance  > (sim_time * min_vel_x)   / 2
+      #latch_xy_goal_tolerance: true
+
+      sim_time: 1.7
+      vx_samples: 15
+      vy_samples: 1       # diff drive robot, there is only one sample
+      vtheta_samples: 15
+      discretize_by_time: false
+      angular_granularity: 0.15
       linear_granularity: 0.05
-      angular_granularity: 0.025
-      transform_tolerance: 0.2
-      xy_goal_tolerance: 0.25
-      trans_stopped_velocity: 0.25
-      short_circuit_trajectory_evaluation: True
-      stateful: True
-      critics: ["RotateToGoal", "Oscillation", "BaseObstacle", "GoalAlign", "PathAlign", "PathDist", "GoalDist","PreferForwardCritic"]
+      # sim_period
+      # include_last_point
+      prune_plan: true
+      prune_distance: 1.0   # Old poses farther away than prune_distance (in m) will be pruned.
+                            # If the robot ever gets away further than this distance from the plan,
+                            # the error "Resulting plan has 0 poses in it" will be thrown and
+                            # replanning will be triggered.
+      critics: ["RotateToGoal", "Oscillation", "BaseObstacle","ObstacleFootprint", "GoalAlign", "PathAlign", "PathDist", "GoalDist","PreferForwardCritic"]
+      ObstacleFootprint.scale: 0.01 # default: 0.01  mir: 0.01  - weighting for how much the controller should avoid obstacles
+      ObstacleFootprint.max_scaling_factor: 0.2 # default: 0.2   mir: 0.2   - how much to scale the robot's footprint when at speed.
+      ObstacleFootprint.scaling_speed: 0.25     # default: 0.25  mir: 0.25  - absolute velocity at which to start scaling the robot's footprint
+      ObstacleFootprint.sum_scores: false  
       PreferForwardCritic.penalty: 1.0
       BaseObstacle.scale: 0.02
-      PathAlign.scale: 32.0
+      PathAlign.scale: 16.0
       PathAlign.forward_point_distance: 0.1
       GoalAlign.scale: 24.0
       GoalAlign.forward_point_distance: 0.1
       PathDist.scale: 32.0
       GoalDist.scale: 24.0
-      RotateToGoal.scale: 32.0
+      RotateToGoal.scale: 100.0
       RotateToGoal.slowing_factor: 5.0
       RotateToGoal.lookahead_time: -1.0
 
@@ -270,9 +215,9 @@ local_costmap:
       height: 15
       resolution: 0.05
       footprint_padding: 0.05
-      robot_radius: 0.48
-      # footprint: “[[0.334, 0.334], [0.334, -0.334], [-0.334, -0.334], [-0.334, 0.334]]”
-      plugins: ["social_layer","voxel_layer",  "inflation_layer"]
+      # robot_radius: 0.48
+      footprint: “ [[0.488,-0.293],[0.488,0.293],[-0.412,0.293],[-0.412,-0.293]]”
+      plugins: ["social_layer","obstacle_layer",  "inflation_layer"]
       social_layer:
         plugin: "context_aware_navigation::SocialLayer"
         enabled: True
@@ -285,26 +230,31 @@ local_costmap:
         plugin: "nav2_costmap_2d::InflationLayer"
         cost_scaling_factor: 3.0
         inflation_radius: 0.5
-      voxel_layer:
-        plugin: "nav2_costmap_2d::VoxelLayer"
+      obstacle_layer:
+        plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        publish_voxel_map: True
-        origin_z: 0.0
-        z_resolution: 0.05
-        z_voxels: 16
-        max_obstacle_height: 2.0
-        mark_threshold: 0
-        observation_sources: scan
-        scan:
-          topic: /base_scan
-          sensor_frame: base_laser_link
-          max_obstacle_height: 2.0
+        observation_sources: b_scan f_scan
+        b_scan:
+          topic: /b_scan_rep117
+          sensor_frame: back_laser_link
+          max_obstacle_height: 0.25
           clearing: True
           marking: True
           data_type: "LaserScan"
-          raytrace_max_range: 7.0
+          raytrace_max_range: 4.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 7.0
+          obstacle_max_range: 3.0
+          obstacle_min_range: 0.0
+        f_scan:
+          topic: /f_scan_rep117
+          sensor_frame: front_laser_link
+          max_obstacle_height: 0.25
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 4.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 3.0
           obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
@@ -319,8 +269,8 @@ global_costmap:
       global_frame: map
       robot_base_frame: base_link
       footprint_padding: 0.05
-      robot_radius: 0.4
-      # footprint: “[[0.334, 0.334], [0.334, -0.334], [-0.334, -0.334], [-0.334, 0.334] ]”
+      # robot_radius: 0.4
+      footprint: “ [[0.488,-0.293],[0.488,0.293],[-0.412,0.293],[-0.412,-0.293]]”
       transform_tolerance: 5.0
       resolution: 0.05
       track_unknown_space: true
@@ -336,17 +286,28 @@ global_costmap:
       obstacle_layer:
         plugin: "nav2_costmap_2d::ObstacleLayer"
         enabled: True
-        observation_sources: scan
-        scan:
-          topic: /base_scan
-          sensor_frame: base_laser_link
-          max_obstacle_height: 2.0
+        observation_sources: b_scan f_scan
+        b_scan:
+          topic: /b_scan_rep117
+          sensor_frame: back_laser_link
+          max_obstacle_height: 0.25
           clearing: True
           marking: True
           data_type: "LaserScan"
-          raytrace_max_range: 7.0
+          raytrace_max_range: 4.0
           raytrace_min_range: 0.0
-          obstacle_max_range: 7.0
+          obstacle_max_range: 3.0
+          obstacle_min_range: 0.0
+        f_scan:
+          topic: /f_scan_rep117
+          sensor_frame: front_laser_link
+          max_obstacle_height: 0.25
+          clearing: True
+          marking: True
+          data_type: "LaserScan"
+          raytrace_max_range: 4.0
+          raytrace_min_range: 0.0
+          obstacle_max_range: 3.0
           obstacle_min_range: 0.0
       static_layer:
         plugin: "nav2_costmap_2d::StaticLayer"
@@ -356,13 +317,6 @@ global_costmap:
         cost_scaling_factor: 3.0
         inflation_radius: 0.55
       always_send_full_costmap: True
-
-map_saver:
-  ros__parameters:
-    save_map_timeout: 5.0
-    free_thresh_default: 0.25
-    occupied_thresh_default: 0.65
-    map_subscribe_transient_local: True
 
 planner_server:
   ros__parameters:
@@ -425,10 +379,10 @@ velocity_smoother:
     smoothing_frequency: 20.0
     scale_velocities: False
     feedback: "OPEN_LOOP"
-    max_velocity: [0.7, 0.0, 1.2]
-    min_velocity: [-0.1, -0.0, -1.2]
-    max_accel: [0.3,0.0,0.4]
-    max_decel: [-0.3,-0.0,-0.4]
+    max_velocity: [0.8, 0.0, 1.0]
+    min_velocity: [-0.2, -0.0, -1.0]
+    max_accel: [0.8,0.0,1.5]
+    max_decel: [-0.8,-0.0,-1.5]
     odom_topic: "odom"
     odom_duration: 0.1
     deadband_velocity: [0.0, 0.0, 0.0]

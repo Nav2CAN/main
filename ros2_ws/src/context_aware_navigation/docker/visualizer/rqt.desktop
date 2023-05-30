@@ -1,0 +1,7 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RQT
+Exec=rqt
+Icon=/opt/ros/rolling/share/rqt_gui/resouce/rqt.png
+Categories=Utility
