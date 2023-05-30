@@ -127,7 +127,7 @@ class Detector(Node):
             detections = self.detect(im0s, img) # class_ID, x, y, w, h, confi
             
             boundingBoxes = BoundingBoxes()
-            boundingBoxes.header.stamp = rclpy.time.Time()
+            boundingBoxes.header.stamp = self.get_clock().now().to_msg()
             boundingBoxes.header.frame_id = "map"
             for detection in detections:
                 
@@ -153,7 +153,7 @@ class Detector(Node):
                     bb.center_y = -y + t.transform.translation.y
                     bb.width = w
                     bb.height = h
-                    boundingBoxes.boundingBoxes.append(bb)
+                    boundingBoxes.boundingboxes.append(bb)
             self.interaction_publisher.publish(boundingBoxes)
 
         except Exception as e:

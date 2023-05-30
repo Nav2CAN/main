@@ -152,7 +152,7 @@ def generate_launch_description():
             package="context_aware_navigation",
             executable="people_publisher.py",
             parameters=[{"use_sim_time": use_sim_time}],
-            arguments=["2"]
+            arguments=["4"]
         ),
         # Node(
         #         package="tf2_ros",
