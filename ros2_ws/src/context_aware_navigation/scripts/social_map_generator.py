@@ -61,7 +61,7 @@ class SocialMapGenerator(Node):
         self.people_sub  # prevent unused variable warning
 
     def people_callback(self, msg: People):
-        start_time = self.tracker.get_clock().now().nanoseconds # save time for timing of node
+        start_time = self.get_clock().now().nanoseconds # save time for timing of node
         # get the latest transform between the robot and the map
         # TODO assign correct tf_frames
 
@@ -124,7 +124,7 @@ class SocialMapGenerator(Node):
         social_mapHeader.stamp = msg.header.stamp
         self.publisher_.publish(self.cvBridge.cv2_to_imgmsg(
             self.socialMap, encoding="passthrough", header=social_mapHeader))
-        timing = start_time - self.tracker.get_clock().now().nanoseconds # save time for timing of node
+        timing = start_time - self.get_clock().now().nanoseconds # save time for timing of node
         append_to_csv("socialMapGeneratorTiming.csv", timing)
 
 

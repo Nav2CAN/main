@@ -1,7 +1,10 @@
 <CycloneDDS>
    <Domain>
-     <General>
-        <NetworkInterfaceAddress>wlp2s0</NetworkInterfaceAddress>
-    </General>
+      <General>
+         <NetworkInterfaceAddress>wlp2s0</NetworkInterfaceAddress>
+      </General>
+      <Internal>
+         <MinimumSocketReceiveBufferSize>10MB</MinimumSocketReceiveBufferSize>
+      </Internal>
    </Domain>
 </CycloneDDS>

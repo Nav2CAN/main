@@ -4,8 +4,11 @@ https://raw.githubusercontent.com/eclipse-cyclonedds/cyclonedds/master/etc/cyclo
     <Domain id="any">
         <General>
             <Interfaces>
-                <NetworkInterface address="192.168.1.228" priority="default" multicast="default" />
+                <NetworkInterface address="192.168.1.114" priority="default" multicast="default" />
             </Interfaces>
         </General>
+        <Internal>
+            <MinimumSocketReceiveBufferSize>10MB</MinimumSocketReceiveBufferSize>
+        </Internal>
     </Domain>
 </CycloneDDS>

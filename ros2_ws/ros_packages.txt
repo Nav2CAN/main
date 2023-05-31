@@ -21,6 +21,7 @@ sudo pip3 install transforms3d
 sudo pip install numba
 sudo apt-get install ntpdate
 sudo apt-get install ntp
+sudo apt-get install ros-humble-joint-state-publisher
 
 Docker
 sudo apt install gnome-terminal

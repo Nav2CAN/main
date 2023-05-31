@@ -161,12 +161,12 @@ def generate_launch_description():
             arguments=["0", ".055", "0", "-0.285",
                        "0", "0", "camera_link", "camera1_link"]
         ),
-        # Node(
-        #     package="tf2_ros",
-        #     executable="static_transform_publisher",
-        #     arguments=["0", "0", "1.05", "0",
-        #                "0", "0", "map", "camera_link"]
-        # ),
+        Node(
+            package="tf2_ros",
+            executable="static_transform_publisher",
+            arguments=["25.0", "8.0", "1.05", "0",
+                       "0", "0", "map", "camera_link"]
+        ),
         # Node(
         #         package="tf2_ros",
         #         executable="static_transform_publisher",

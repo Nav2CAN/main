@@ -20,6 +20,7 @@ services:
     volumes:
       - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/bridge.yaml:/bridge.yaml
       - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/cyclonedds_foxy.xml:/cyclonedds.xml
+      - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/10-cyclone-max.conf:/etc/sysctl.d/10-cyclone-max.conf
     environment:
       - "ROS_MASTER_URI=http://localhost:11311"
       - "CYCLONEDDS_URI=/cyclonedds.xml"
