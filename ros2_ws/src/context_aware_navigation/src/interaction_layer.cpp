@@ -46,36 +46,11 @@ namespace context_aware_navigation
         double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/, double *min_x,
         double *min_y, double *max_x, double *max_y)
     {
-        //figure out the zone where we want to draw the ellipse
-                
-        if (need_recalculation_) {
-            last_min_x_ = *min_x;
-            last_min_y_ = *min_y;
-            last_max_x_ = *max_x;
-            last_max_y_ = *max_y;
-            // For some reason when I make these -<double>::max() it does not
-            // work with Costmap2D::worldToMapEnforceBounds(), so I'm using
-            // -<float>::max() instead.
-            *min_x = -std::numeric_limits<float>::max();
-            *min_y = -std::numeric_limits<float>::max();
-            *max_x = std::numeric_limits<float>::max();
-            *max_y = std::numeric_limits<float>::max();
-            need_recalculation_ = false;
-        } else {
-            double tmp_min_x = last_min_x_;
-            double tmp_min_y = last_min_y_;
-            double tmp_max_x = last_max_x_;
-            double tmp_max_y = last_max_y_;
-            last_min_x_ = *min_x;
-            last_min_y_ = *min_y;
-            last_max_x_ = *max_x;
-            last_max_y_ = *max_y;
-            *min_x = std::min(tmp_min_x, *min_x);
-            *min_y = std::min(tmp_min_y, *min_y);
-            *max_x = std::max(tmp_max_x, *max_x);
-            *max_y = std::max(tmp_max_y, *max_y);
-        }
-        
+        *min_x = -std::numeric_limits<float>::max();
+        *min_y = -std::numeric_limits<float>::max();
+        *max_x = std::numeric_limits<float>::max();
+        *max_y = std::numeric_limits<float>::max();
+
         auto node = node_.lock();
         if (!node) {
             throw std::runtime_error{"Failed to lock node"};
