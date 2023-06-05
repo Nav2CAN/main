@@ -12,31 +12,22 @@ services:
     # volumes:
     #   - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/scripts/mir_bridge.py:/ws/install/mir_driver/mir_bridge.py
     command: "roslaunch mir_driver mir.launch"
-    # network_mode: "host"
   ros1_bridge:
     build:
       context: ./ros1_bridge
       dockerfile: ros1_bridge.dockerfile
     # image: ros:foxy-ros1-bridge
+    #   - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/bridge.yaml:/bridge.yaml
+    volumes:
+      - /home/tristan/repositories/master-thesis/docker/ros1_bridge/cyclonedds_foxy.xml:/cyclonedds.xml
+      - /home/tristan/repositories/master-thesis/docker/ros1_bridge/10-cyclone-max.conf:/etc/sysctl.d/10-cyclone-max.conf
     environment:
       - "HOST_ADDR=192.168.12.214"
       - "ROS_MASTER_URI=http://mir-source-driver:11311"
+      - "CYCLONEDDS_URI=/cyclonedds.xml"
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+
     command: bash -c "RMW_IMPLEMENTATION=rmw_cyclonedds_cpp ros2 run ros1_bridge dynamic_bridge"
     ports:
-     - 80:80
-  nav2:
-    build:
-      context: ./Nav2
-      dockerfile: nav2.dockerfile
-
-    # volumes:
-    #   - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/bridge.yaml:/bridge.yaml
-    #   - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/cyclonedds_foxy.xml:/cyclonedds.xml
-    #   - /home/tristan/repositories/master-thesis/ros2_ws/src/context_aware_navigation/docker/ros1_bridge/10-cyclone-max.conf:/etc/sysctl.d/10-cyclone-max.conf
-    # environment:
-    #   - "ROS_MASTER_URI=http://192.168.12.20:11311"
-    #   - "CYCLONEDDS_URI=/cyclonedds.xml"
-    #   - /etc/timezone:/etc/timezone:ro
-    #   - /etc/localtime:/etc/localtime:ro
-    # command: "ros2 run ros1_bridge dynamic_bridge"
-    # network_mode: "host"
+      - 80:80

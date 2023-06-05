@@ -1,0 +1,12 @@
+<CycloneDDS>
+  <Domain id='any'>
+    <General>
+      <ExternalNetworkAddress>${HOST_ADDR}</ExternalNetworkAddress>
+      <AllowMulticast>false</AllowMulticast>
+    </General>
+    <Discovery>
+      <ParticipantIndex>10</ParticipantIndex>
+      <Peers><Peer address='${HOST_ADDR}'/></Peers>
+    </Discovery>
+  </Domain>
+</CycloneDDS>
