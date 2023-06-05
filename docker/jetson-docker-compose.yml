@@ -9,20 +9,19 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all #forward gpu device
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp #update to alternatice ROS middleware https://github.com/ros2/rclcpp/issues/1335
       - ROS_DOMAIN_ID=0
-
     volumes:
       - /dev:/dev # allow access to all devices (realsense etc)
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
       # - /mnt/SDcard/master-thesis/bash-setup:/root/.bashrc # attach a bashrc file to source our ros_ws
-      - /mnt/SDcard/master-thesis/docker-volume/:/docker-volume
+      - /mnt/SDcard/master-thesis/ros2_ws:/ros2_ws
       - /mnt/SDcard/master-thesis/jetson-inference/data:/jetson-inference/data # for models and images
       - /mnt/SDcard/master-thesis/jetson-inference/images:/jetson-inference/images # to save images# attach our realsense launch files into realsense2_camera workspace
-      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_camera1_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_camera1_launch.py
-      - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/orin_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/orin_launch.py
-      # - /mnt/SDcard/master-thesis/docker-volume/ros_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
+      - /mnt/SDcard/master-thesis/ros2_ws/launch/rs_ours_camera1_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_camera1_launch.py
+      - /mnt/SDcard/master-thesis/ros2_ws/launch/orin_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/orin_launch.py
+      # - /mnt/SDcard/master-thesis/ros2_ws/launch/rs_ours_multi_camera_launch.py:/ros2_ws/src/realsense-ros/realsense2_camera/launch/rs_ours_multi_camera_launch.py
     runtime: nvidia
     # gets called on docker compose up and builds the workspace freshly
-    # command: bash -l -c "pip install tqdm scipy seaborn matplotlib && cd /docker-volume/ros_ws/ && colcon build --symlink-install && source install/setup.bash && cd /ros2_ws/ && colcon build --packages-select realsense2_camera && source install/setup.bash && cd /docker-volume/ros_ws/src/interaction_detection/interaction_detection && ros2 launch interaction_detection detection_pipelines.launch.py"
-    command: bash -l -c " cd /docker-volume/ros_ws/ && colcon build --symlink-install --packages-skip tf_transformations && source install/setup.bash && cd /ros2_ws/ && colcon build --packages-select realsense2_camera && source install/setup.bash && cd /docker-volume/ros_ws/src/interaction_detection/interaction_detection && ros2 launch realsense2_camera orin_launch.py" # && ros2 run interaction_detection interaction_detection --ros-args --remap use_sim_time:=true"
+    # command: bash -l -c "pip install tqdm scipy seaborn matplotlib && cd /ros2_ws/ && colcon build --symlink-install && source install/setup.bash && cd /ros2_ws/ && colcon build --packages-select realsense2_camera && source install/setup.bash && cd /ros2_ws/src/interaction_detection/interaction_detection && ros2 launch interaction_detection detection_pipelines.launch.py"
+    command: bash -l -c " cd /ros2_ws/ && colcon build --symlink-install --packages-skip tf_transformations && source install/setup.bash && cd /ros2_ws/ && colcon build --packages-select realsense2_camera && source install/setup.bash && cd /ros2_ws/src/interaction_detection/interaction_detection && ros2 launch realsense2_camera orin_launch.py" # && ros2 run interaction_detection interaction_detection --ros-args --remap use_sim_time:=true"
 #pip install tqdm scipy seaborn matplotlib &&

@@ -1,0 +1,1 @@
+colcon build --packages-skip context_aware_navigation
