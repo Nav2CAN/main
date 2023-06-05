@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+*.tar.gz
+*.so
+*.deb
+packages/usr
+packages/apt
+packages/*.list
+test/data
+build_log.txt
+logs
+jetson-ota-public.asc
