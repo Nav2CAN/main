@@ -91,53 +91,38 @@ namespace context_aware_navigation
         if (!node) {
             throw std::runtime_error{"Failed to lock node"};
         }
-        cv_bridge::CvImagePtr cv_ptr;
+        
         // convert iamge message
         try
         {
             // convert and update pointer with new image
             //  TODO the rotation from this is not critcal through time but the translation is so consider saving the timestamp of the message
             cv_ptr = cv_bridge::toCvCopy(message);
-            // cv::cvtColor(cv_ptr->image, cv_ptr->image, CV_BGR2GRAY); //save grayscale image
-            // cv::Mat test=cv_ptr->image;
-            // std::string fromFrameRel = message->header.frame_id.c_str();
-            // std::string toFrameRel = base_frame.c_str();
-            // geometry_msgs::msg::TransformStamped t;
-            // // get transform between robot and map
-            // try
-            // {
-            //     t = tf_buffer->lookupTransform(
-            //         toFrameRel, fromFrameRel,
-            //         tf2::TimePointZero);
-            // }
-            // catch (const tf2::TransformException &ex)
-            // {
-            //     return;
-            // }
-            // // get rpy
-            // tf2::Quaternion q(
-            //     t.transform.rotation.x,
-            //     t.transform.rotation.y,
-            //     t.transform.rotation.z,
-            //     t.transform.rotation.w);
-            // tf2::Matrix3x3 m(q);
-            // double roll, pitch, yaw;
-            // m.getRPY(roll, pitch, yaw);
-            // // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
-            // //  get rotation matrix for rotating the image around its center in pixel coordinates
-            // cv::Point2f center((cv_ptr->image.cols - 1) / 2.0, (cv_ptr->image.rows - 1) / 2.0);
-            // cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
-            // // determine bounding rectangle, center not relevant
-            // cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), cv_ptr->image.size(), -yaw * (180 / M_PI)).boundingRect2f();
-            // // adjust transformation matrix
-            // rot.at<double>(0, 2) += bbox.width / 2.0 - cv_ptr->image.cols / 2.0;
-            // rot.at<double>(1, 2) += bbox.height / 2.0 - cv_ptr->image.rows / 2.0;
-            // cv::warpAffine(cv_ptr->image, social_map_rotated, rot, bbox.size());
-            // cv::flip(cv_ptr->image,social_map_rotated,0);
-            cv::Mat temp=cv_ptr->image;
-            temp.convertTo(temp, CV_8UC1);
-            cv::flip(temp,temp,0);
-            temp.copyTo(social_map_rotated);
+            
+            std::string fromFrameRel = message->header.frame_id.c_str();
+            std::string mapFrame = "map";
+            geometry_msgs::msg::TransformStamped pastRobotPose;
+
+            // get a pose of the social map in the map frame at time of recording
+            try
+            {
+                pastRobotPose = tf_buffer->lookupTransform(
+                    message->header.frame_id.c_str(), mapFrame,
+                    message->header.stamp);
+            }
+            catch (const tf2::TransformException &ex)
+            {
+                return;
+            }
+            recordedPose->position.x=pastRobotPose.transform.translation.x;
+            recordedPose->position.y=pastRobotPose.transform.translation.y;
+            recordedPose->position.z=pastRobotPose.transform.translation.z;
+            recordedPose->orientation.x = 0;
+            recordedPose->orientation.y = 0;
+            recordedPose->orientation.z = 0;
+            recordedPose->orientation.w = 1;
+
+            recordedTime = message->header.stamp;
         }
         catch (cv_bridge::Exception &e)
         {
@@ -177,20 +162,77 @@ namespace context_aware_navigation
 
         // if (social_map_rotated.data!=NULL){
                         // auto test = social_map_rotated.at<uchar>(center_image_j - (center_layer_j - j),center_image_i - (center_layer_i - i));
+        std::string mapFrame = "map";
+        std::string toFrameRel = base_frame.c_str();
+        geometry_msgs::msg::TransformStamped t;
+        geometry_msgs::msg::Pose poseOut;
 
+
+        // get transform between from the past robot in the map frame to the current one in the odom frame
+        try
+        {
+            t = tf_buffer->lookupTransform(
+                toFrameRel,
+                node->get_clock()->now(),
+                mapFrame,
+                recordedTime,
+                base_frame.c_str(),rclcpp::Duration(0,10000000));//10ms timeout
+        }
+        catch (const tf2::TransformException &ex)
+        {
+            return;
+        }
+        // transform ImagePose
+        tf2::doTransform(*recordedPose,poseOut,t);
+
+
+        // get rpy and rotate Image
+        tf2::Quaternion q(
+            poseOut.orientation.x,
+            poseOut.orientation.y,
+            poseOut.orientation.z,
+            poseOut.orientation.w);
+        tf2::Matrix3x3 m(q);
+        double roll, pitch, yaw;
+        m.getRPY(roll, pitch, yaw);
+        // https://stackoverflow.com/questions/22041699/rotate-an-image-without-cropping-in-opencv-in-c
+        //  get rotation matrix for rotating the image around its center in pixel coordinates
+        cv::Point2f center((cv_ptr->image.cols - 1) / 2.0, (cv_ptr->image.rows - 1) / 2.0);
+        cv::Mat rot = cv::getRotationMatrix2D(center, -yaw * (180 / M_PI), 1.0);
+        // determine bounding rectangle, center not relevant
+        cv::Rect2f bbox = cv::RotatedRect(cv::Point2f(), cv_ptr->image.size(), -yaw * (180 / M_PI)).boundingRect2f();
+        // adjust transformation matrix
+        rot.at<double>(0, 2) += bbox.width / 2.0 - cv_ptr->image.cols / 2.0;
+        rot.at<double>(1, 2) += bbox.height / 2.0 - cv_ptr->image.rows / 2.0;
+        cv::warpAffine(cv_ptr->image, social_map_rotated, rot, bbox.size());
+        cv::flip(cv_ptr->image,social_map_rotated,0);
+        cv::Mat temp=cv_ptr->image;
+        temp.convertTo(temp, CV_8UC1);
+        cv::flip(temp,temp,0);
+        temp.copyTo(social_map_rotated);
+        
         if (social_map_rotated.data != NULL){
             if (social_map_rotated.empty()!=true){
-                for (int j = min_j; j < max_j; j++) {
-                for (int i = min_i; i < max_i; i++) {
-                    try{
-                    int index = getIndex(i, j);
-                    uint8_t cost= static_cast<uint8_t>(social_map_rotated.at<uchar>(j,i));
-                    costmap_array[index] =cost;
-            // This combin      es the master costmap with the current costmap by taking
-            // the max across all costmaps.
+                for (int j = 0; j < social_map_rotated.rows; j++) {
+                    for (int i = 0; i < social_map_rotated.cols; i++) {
+                        try{
+                            //get real coordinates after translation
+                            double wx,wy;
+                            uint mx,my;
+                            mapToWorld(i,j,wx,wy);//get the physical position of the pixel in the social map
+
+                            if(worldToMap(wx+poseOut.position.x,wy+poseOut.position.y,mx,my))//translate the position
+                            {
+                                int index = getIndex(mx, my);
+                                uint8_t cost= static_cast<uint8_t>(social_map_rotated.at<uchar>(j,i));
+                                costmap_array[index] =cost;
+                            }
+
+                // This combines the master costmap with the current costmap by taking
+                // the max across all costmaps.
+                        }
+                        catch(std::exception &e){return;}
                     }
-                    catch(std::exception &e){return;}
-                }
             }}
         }
         updateWithMax(master_grid, min_i, min_j, max_i, max_j);
@@ -198,6 +240,9 @@ namespace context_aware_navigation
 
     }
 } // namespace nav2_gradient_costmap_plugin
+
+
+
 
 // This is the macro allowing a nav2_gradient_costmap_plugin::GradientLayer class
 // to be registered in order to be dynamically loadable of base type nav2_costmap_2d::Layer.

@@ -9,6 +9,7 @@
 #include "nav2_costmap_2d/costmap_layer.hpp"
 
 #include "sensor_msgs/msg/image.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 #include "opencv4/opencv2/opencv.hpp"
 #include "cv_bridge/cv_bridge.h"
 #include "tf2_ros/transform_listener.h"
@@ -49,6 +50,11 @@ private:
   std::string base_frame;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
+
+  geometry_msgs::msg::Pose::SharedPtr recordedPose;
+  builtin_interfaces::msg::Time recordedTime;
+  cv_bridge::CvImagePtr cv_ptr;
+  
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr social_map_sub_;
   cv::Mat social_map_rotated;
 };
