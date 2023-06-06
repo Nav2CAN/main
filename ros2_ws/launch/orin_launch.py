@@ -21,11 +21,11 @@ def generate_launch_description():
             arguments=["0", ".055", "0", "-0.285",
                        "0", "0", "camera_link", "camera1_link"]
         ),
-        Node(
-            package='interaction_detection',
-            executable='interaction_detection',
-            name='interaction_detection',
-        ),
+        # Node(
+        #     package='interaction_detection',
+        #     executable='interaction_detection',
+        #     name='interaction_detection',
+        # ),
         IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     [ThisLaunchFileDir(), '/rs_ours_camera1_launch.py']),
