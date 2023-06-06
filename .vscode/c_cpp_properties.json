@@ -4,8 +4,9 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/opt/ros/humble/include/**",
-                "/usr/include/**"
+                "/opt/ros/humble/**",
+                "/usr/include/**",
+                "/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/gcc",

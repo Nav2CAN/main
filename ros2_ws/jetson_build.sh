@@ -1,1 +1,2 @@
-colcon build --packages-skip context_aware_navigation
+#!/bin/bash
+colcon build --symlink-install --packages-ignore context_aware_navigation

@@ -51,12 +51,13 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener;
 
-  geometry_msgs::msg::Pose::SharedPtr recordedPose;
+  geometry_msgs::msg::Pose recordedPose;
   builtin_interfaces::msg::Time recordedTime;
   cv_bridge::CvImagePtr cv_ptr;
   
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr social_map_sub_;
   cv::Mat social_map_rotated;
+  cv::Mat social_map;
 };
 
 }  // namespace context_aware_navigation

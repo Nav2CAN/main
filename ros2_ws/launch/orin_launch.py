@@ -15,12 +15,12 @@ def generate_launch_description():
             executable='multi_person_tracker',
             name='multi_person_tracker',
         ),
-        Node(
-            package="tf2_ros",
-            executable="static_transform_publisher",
-            arguments=["0", ".055", "0", "-0.285",
-                       "0", "0", "camera_link", "camera1_link"]
-        ),
+        # Node(
+        #     package="tf2_ros",
+        #     executable="static_transform_publisher",
+        #     arguments=["0", ".055", "0", "-0.285",
+        #                "0", "0", "camera_link", "camera1_link"]
+        # ),
         Node(
             package='interaction_detection',
             executable='interaction_detection',

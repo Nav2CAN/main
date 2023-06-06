@@ -119,8 +119,8 @@ def generate_launch_description():
                 parameters=[configured_params],
                 arguments=['--ros-args', '--log-level', log_level],
                 remappings=remappings + [('/cmd_vel', 'cmd_vel_nav')]),
-            # prefix=['gdbserver localhost:3000'],
-            # emulate_tty=True),
+                # prefix=['gdbserver localhost:3000'],
+                # emulate_tty=True),
             Node(
                 package='nav2_smoother',
                 executable='smoother_server',

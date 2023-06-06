@@ -50,8 +50,8 @@ class SocialMapGenerator(Node):
             self.people_callback,
             10)
         # tf listener stuff so we can transform people into there
-        self.tf_buffer = Buffer()
-        self.tf_listener = TransformListener(self.tf_buffer, self)
+        self.tf_buffer = Buffer(cache_time=rclpy.duration.Duration(seconds=2))
+        self.tf_listener = TransformListener(self.tf_buffer, self,spin_thread=True)
         self.people_sub  # prevent unused variable warning
 
     def people_callback(self, msg: People):# save time for timing of node
@@ -62,7 +62,8 @@ class SocialMapGenerator(Node):
             t = self.tf_buffer.lookup_transform(
                 msg.header.frame_id,
                 "base_link",
-                msg.header.stamp)
+                msg.header.stamp,
+                rclpy.duration.Duration(seconds=0,nanoseconds=10000000))#10ms timeout
         except TransformException as ex:
             self.get_logger().info(
                 f'Could not transform base_link to map: {ex}')
