@@ -1,4 +1,7 @@
 {
+  "nvcr.io": {
+    "Seed": "Qd+7VjRviwczvOO9G38nNg=="
+  },
   "registry-1.docker.io": {
     "Seed": "K/03zPKCLEBSsvKFRpW9pA=="
   }
