@@ -5,6 +5,8 @@
 ARG BASE_IMAGE=nvcr.io/nvidia/l4t-base:r32.5.0
 FROM ${BASE_IMAGE} as humble
 
+COPY qemu-arm-static /usr/bin/qemu-arm-static 
+
 ARG ROS_PKG=ros_base
 ENV ROS_DISTRO=humble
 ENV ROS_ROOT=/opt/ros/${ROS_DISTRO}
@@ -107,14 +109,16 @@ RUN apt-get update && \
     
 # RUN pip3 install --upgrade --no-cache-dir --verbose cmake   
 # RUN cmake --version
+RUN python3 -m pip install --upgrade pip
+RUN pip3 install --no-cache-dir scikit-build
+RUN pip3 install --upgrade --no-cache-dir --verbose cmake
+RUN cmake --version
+RUN which cmake
 
-
-#
 # remove other versions of Python3
 # workaround for 'Could NOT find Python3 (missing: Python3_NumPy_INCLUDE_DIRS Development'
-#
-RUN apt purge -y python3.9 libpython3.9* || echo "python3.9 not found, skipping removal" && \
-    ls -ll /usr/bin/python*
+RUN apt purge -y python3.9 libpython3.9* || echo "python3.9 not found, skipping removal"
+RUN ls -ll /usr/bin/python*
     
 # 
 # download/build ROS from source
@@ -131,6 +135,7 @@ RUN mkdir -p ${ROS_ROOT}/src && \
 		demo_nodes_py \
 		example_interfaces \
         diagnostic_updater \
+        nav2_bringup \
 		> ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall && \
     cat ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall && \
     vcs import src < ros2.${ROS_DISTRO}.${ROS_PKG}.rosinstall && \
@@ -139,8 +144,7 @@ RUN mkdir -p ${ROS_ROOT}/src && \
     git -C ${ROS_ROOT}/src/ clone https://github.com/ament/ament_cmake -b ${ROS_DISTRO} && \
     # install dependencies using rosdep
     apt-get update
-RUN pip3 install --upgrade --no-cache-dir --verbose cmake   
-RUN cmake --version
+
 
 RUN cd ${ROS_ROOT} && \
     rosdep init && \
