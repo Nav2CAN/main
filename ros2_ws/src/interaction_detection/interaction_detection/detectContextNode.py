@@ -38,7 +38,7 @@ class Detector(Node):
     device: choose compute device
     '''
 
-    def __init__(self, weights='/docker-volume/ros_ws/src/interaction_detection/interaction_detection/yolov7-ContextNav.pt',
+    def __init__(self, weights='/ros_ws/src/interaction_detection/interaction_detection/yolov7-ContextNav.pt',
                  img_size=320, map_size=15,
                  trace=True, augment=False, conf_thres=0.25, iou_thres=0.45,
                  classes=None, agnostic_nms=False, device=''):
